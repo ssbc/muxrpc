@@ -1,17 +1,9 @@
 var pull = require('pull-stream')
 // wrap pull streams around packet-stream's weird streams.
 
-function source (weird) {
-}
-
-function sink (weird) {
-  return 
-}
-
 module.exports = function (weird) {
   var buffer = [], ended = false, waiting
   weird.read = function (data, end) {
-    console.log('ENDED?', end)
     ended = ended || end
     if(waiting) {
       var cb = waiting
