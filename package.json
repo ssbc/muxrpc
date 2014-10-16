@@ -8,7 +8,7 @@
     "url": "git://github.com/dominictarr/muxrpc.git"
   },
   "dependencies": {
-    "packet-stream": "~0.1.0",
+    "packet-stream": "~0.2.0",
     "tape": "~3.0.0",
     "pull-stream": "~2.26.0"
   },
