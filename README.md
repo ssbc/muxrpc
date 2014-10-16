@@ -4,6 +4,8 @@ combined rpc and multiplexing, with pull-streams.
 
 ## example
 
+``` js
+
 var MRPC = require('muxrpc')
 
 //we need a manifest of methods we wish to expose.
