@@ -1,4 +1,3 @@
-
 var pullWeird = require('./pull-weird')
 var PacketStream = require('packet-stream')
 var EventEmitter = require('events').EventEmitter
@@ -36,49 +35,54 @@ module.exports = function (remoteApi, localApi) {
       )
     }
 
-    var ps = PacketStream({
-      request: function (opts, cb) {
-        var name = opts.name
-        if(!hasAsync(name))
-          return cb(new Error('method not supported:'+name))
-        var args = opts.args
-        args.push(cb)
-        //packet stream already has a thing to check cb fires only once.
-        try { local[name].apply(local, args) }
-        catch (err) { cb(isString(err) ? new Error(err) : err) }
-      },
-      stream: function (stream) {
-        stream.read = function (data, end) {
-          console.log(data)
-          var name = data.name
-          stream.read = null
-          if(end) return stream.write(null, end)
+    function createPacketStream () {
 
-          if(!hasSource(name))
-            return stream.write(null, new Error('no source:'+name))
+      return PacketStream({
+        request: function (opts, cb) {
+          var name = opts.name
+          if(!hasAsync(name))
+            return cb(new Error('method not supported:'+name))
+          var args = opts.args
+          args.push(cb)
+          //packet stream already has a thing to check cb fires only once.
+          try { local[name].apply(local, args) }
+          catch (err) { cb(isString(err) ? new Error(err) : err) }
+        },
+        stream: function (stream) {
+          stream.read = function (data, end) {
+            var name = data.name
+            stream.read = null
+            if(end) return stream.write(null, end)
 
-          pullWeird.sink(stream) (local[name].apply(local, data.args))
+            if(!hasSource(name))
+              return stream.write(null, new Error('no source:'+name))
+
+            pullWeird.sink(stream) (local[name].apply(local, data.args))
+          }
         }
-      }
-    })
+      })
+    }
+
+    var ps = createPacketStream()
+    //if we create the stream immediately,
+    //we get the pull-stream's internal buffer
+    //so all operations are queued for free!
+    var ws = pullWeird(ps)
 
     if(remoteApi.async)
       remoteApi.async.forEach(function (name) {
-        console.log('add async', name)
         emitter[name] = function () {
           var args = [].slice.call(arguments)
           var cb = args.pop()
           if(!isFunction (cb))
             throw new Error('callback must be provided')
 
-          console.log('request:', {call: name, args: args})
           ps.request({name: name, args: args}, cb)
         }
       })
 
     if(remoteApi.source)
       remoteApi.source.forEach(function (name) {
-        console.log('add async', name)
         emitter[name] = function () {
           var args = [].slice.call(arguments)
           var ws = ps.stream()
@@ -86,15 +90,28 @@ module.exports = function (remoteApi, localApi) {
           ws.write({name: name, args: args, type: 'source'})
           return s
         }
-
       })
 
+    //this is the stream to the remote server.
+    //it only makes sense to have one of these.
+    //either throw an error if the user creates
+    //another when the previous has not yet ended
+    //or abort the previous one, and create a new one?
+
+    var once = false
 
     emitter.createStream = function () {
-      return pullWeird(ps)
+      if(ps.ended) {
+        ps = createPacketStream()
+        ws = pullWeird(ps)
+        once = false
+      }
+      else if(once)
+        throw new Error('only one stream allowed at a time')
+      once = true
+      return ws
     }
 
     return emitter
-
   }
 }
