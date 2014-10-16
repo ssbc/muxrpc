@@ -1,0 +1,21 @@
+{
+  "name": "muxrpc",
+  "description": "combined multiplexing and rpc - because a node api needs streams & async",
+  "version": "0.0.0",
+  "homepage": "https://github.com/dominictarr/muxrpc",
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/dominictarr/muxrpc.git"
+  },
+  "dependencies": {
+    "packet-stream": "~0.1.0",
+    "tape": "~3.0.0",
+    "pull-stream": "~2.26.0"
+  },
+  "devDependencies": {},
+  "scripts": {
+    "test": "set -e; for t in test/*.js; do node $t; done"
+  },
+  "author": "Dominic Tarr <dominic.tarr@gmail.com> (http://dominictarr.com)",
+  "license": "MIT"
+}
