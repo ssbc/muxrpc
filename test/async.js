@@ -1,10 +1,8 @@
 var tape = require('tape')
 var pull = require('pull-stream')
+var mux = require('../')
 
-module.exports = function(mux) {
-  if (!mux)
-    mux = require('../')
-
+module.exports = function(serializer) {
   var client = {
     async: ['hello', 'goodbye'],
     source: ['stuff', 'bstuff']
@@ -12,8 +10,8 @@ module.exports = function(mux) {
 
   tape('async', function (t) {
 
-    var A = mux(client, null) ()
-    var B = mux(null, client) ({
+    var A = mux(client, null, serializer) ()
+    var B = mux(null, client, serializer) ({
       hello: function (a, cb) {
         cb(null, 'hello, '+a)
       },
@@ -48,8 +46,8 @@ module.exports = function(mux) {
 
   tape('source', function (t) {
 
-    var A = mux(client, null) ()
-    var B = mux(null, client) ({
+    var A = mux(client, null, serializer) ()
+    var B = mux(null, client, serializer) ({
       stuff: function (b) {
         return pull.values([1, 2, 3, 4, 5].map(function (a) {
           return a * b

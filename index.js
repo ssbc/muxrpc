@@ -2,6 +2,7 @@
 var pullWeird = require('./pull-weird')
 var PacketStream = require('packet-stream')
 var EventEmitter = require('events').EventEmitter
+var PullSerializer = require('pull-serializer')
 
 function isFunction (f) {
   return 'function' === typeof f
@@ -11,7 +12,7 @@ function isString (s) {
   return 'string' === typeof s
 }
 
-module.exports = function (remoteApi, localApi) {
+module.exports = function (remoteApi, localApi, serializer) {
   localApi = localApi || {}
   remoteApi = remoteApi || {}
 
@@ -91,7 +92,10 @@ module.exports = function (remoteApi, localApi) {
 
 
     emitter.createStream = function () {
-      return pullWeird(ps)
+      var pullPs = pullWeird(ps)
+      if (serializer)
+        pullPs = PullSerializer(pullPs, serializer)
+      return pullPs
     }
 
     return emitter
