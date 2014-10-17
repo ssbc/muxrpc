@@ -10,7 +10,7 @@ function isString (s) {
   return 'string' === typeof s
 }
 
-module.exports = function (remoteApi, localApi) {
+module.exports = function (remoteApi, localApi, serializer) {
   localApi = localApi || {}
   remoteApi = remoteApi || {}
 
@@ -109,7 +109,7 @@ module.exports = function (remoteApi, localApi) {
       else if(once)
         throw new Error('only one stream allowed at a time')
       once = true
-      return ws
+      return (serializer) ? serializer(ws) : ws
     }
 
     return emitter

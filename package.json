@@ -9,10 +9,13 @@
   },
   "dependencies": {
     "packet-stream": "~0.2.0",
-    "tape": "~3.0.0",
     "pull-stream": "~2.26.0"
   },
-  "devDependencies": {},
+  "devDependencies": {
+    "tape": "~3.0.0",
+    "pull-serializer": "~0.2.0",
+    "json-buffer": "~2.0.9"
+  },
   "scripts": {
     "test": "set -e; for t in test/*.js; do node $t; done"
   },
