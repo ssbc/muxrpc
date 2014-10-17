@@ -2,7 +2,6 @@
 var pullWeird = require('./pull-weird')
 var PacketStream = require('packet-stream')
 var EventEmitter = require('events').EventEmitter
-var PullSerializer = require('pull-serializer')
 
 function isFunction (f) {
   return 'function' === typeof f
@@ -92,10 +91,7 @@ module.exports = function (remoteApi, localApi, serializer) {
 
 
     emitter.createStream = function () {
-      var pullPs = pullWeird(ps)
-      if (serializer)
-        pullPs = PullSerializer(pullPs, serializer)
-      return pullPs
+      return (serializer) ? serializer(pullWeird(ps)) : pullWeird(ps)
     }
 
     return emitter
