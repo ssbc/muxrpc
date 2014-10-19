@@ -14,6 +14,7 @@ module.exports = function (remoteApi, localApi, serializer) {
   localApi = localApi || {}
   remoteApi = remoteApi || {}
 
+
   return function (local) {
     local = local || {}
 
@@ -46,7 +47,7 @@ module.exports = function (remoteApi, localApi, serializer) {
           args.push(cb)
           //packet stream already has a thing to check cb fires only once.
           try { local[name].apply(local, args) }
-          catch (err) { cb(isString(err) ? new Error(err) : err) }
+          catch (err) { cb(err) }
         },
         stream: function (stream) {
           stream.read = function (data, end) {
@@ -63,11 +64,13 @@ module.exports = function (remoteApi, localApi, serializer) {
       })
     }
 
-    var ps = createPacketStream()
+    var ps = createPacketStream(), _cb
     //if we create the stream immediately,
     //we get the pull-stream's internal buffer
     //so all operations are queued for free!
-    var ws = pullWeird(ps)
+    var ws = pullWeird(ps, function (err) {
+      if(_cb) _cb(err)
+    })
 
     if(remoteApi.async)
       remoteApi.async.forEach(function (name) {
@@ -100,14 +103,17 @@ module.exports = function (remoteApi, localApi, serializer) {
 
     var once = false
 
-    emitter.createStream = function () {
+    emitter.createStream = function (cb) {
       if(ps.ended) {
         ps = createPacketStream()
-        ws = pullWeird(ps)
+        ws = pullWeird(ps, cb)
         once = false
       }
       else if(once)
         throw new Error('only one stream allowed at a time')
+      else
+      //set the cb, this applies to the first stream created only.
+        _cb = cb
       once = true
       return (serializer) ? serializer(ws) : ws
     }
