@@ -58,7 +58,13 @@ module.exports = function (remoteApi, localApi, serializer) {
             if(!hasSource(name))
               return stream.write(null, new Error('no source:'+name))
 
-            pullWeird.sink(stream) (local[name].apply(local, data.args))
+            var source, sink = pullWeird.sink(stream)
+            try {
+              source = local[name].apply(local, data.args)
+            } catch (err) {
+              return sink(pull.error(err))
+            }
+            sink(source)
           }
         }
       })
