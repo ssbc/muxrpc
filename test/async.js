@@ -165,6 +165,34 @@ module.exports = function(serializer) {
     s.sink(function (abort, cb) { cb(true) })
   })
 
+  tape('recover error written to outer stream', function (t) {
+
+    var A = mux(client, null) ()
+    var err = new Error('testing errors')
+    var s = A.createStream(function (_err) {
+      console.log(_err)
+      t.equal(_err, err)
+      t.end()
+    })
+
+    pull(pull.error(err), s.sink)
+
+  })
+
+  tape('recover error when outer stream aborted', function (t) {
+
+    var A = mux(client, null) ()
+    var err = new Error('testing errors')
+    var s = A.createStream(function (_err) {
+      console.log(_err)
+      t.equal(_err, err)
+      t.end()
+    })
+
+    s.source(err, function () {})
+  })
+
+
 }
 
 //see ./jsonb.js for tests with serialization.
