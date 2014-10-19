@@ -24,7 +24,7 @@ module.exports = function (weird, done) {
     source: function (abort, cb) {
       if(abort) {
         weird.write(null, abort)
-        cb(abort); done(abort)
+        cb(abort); done(abort !== true ? abort : null)
       }
       else if(buffer.length) cb(null, buffer.shift())
       else if(ended) cb(ended)
