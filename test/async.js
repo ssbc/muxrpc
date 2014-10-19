@@ -170,7 +170,6 @@ module.exports = function(serializer) {
     var A = mux(client, null) ()
     var err = new Error('testing errors')
     var s = A.createStream(function (_err) {
-      console.log(_err)
       t.equal(_err, err)
       t.end()
     })
@@ -184,7 +183,6 @@ module.exports = function(serializer) {
     var A = mux(client, null) ()
     var err = new Error('testing errors')
     var s = A.createStream(function (_err) {
-      console.log(_err)
       t.equal(_err, err)
       t.end()
     })
@@ -192,6 +190,28 @@ module.exports = function(serializer) {
     s.source(err, function () {})
   })
 
+  tape('cb when stream is ended', function (t) {
+
+    var A = mux(client, null) ()
+    var s = A.createStream(function (_err) {
+      t.equal(_err, null)
+      t.end()
+    })
+
+    pull(pull.empty(), s.sink)
+
+  })
+
+  tape('cb when stream is aborted', function (t) {
+
+    var A = mux(client, null) ()
+    var s = A.createStream(function (_err) {
+      t.equal(_err, null)
+      t.end()
+    })
+
+    s.source(true, function () {})
+  })
 
 }
 
