@@ -1,3 +1,4 @@
+var pull = require('pull-stream')
 var pullWeird = require('./pull-weird')
 var PacketStream = require('packet-stream')
 var EventEmitter = require('events').EventEmitter
