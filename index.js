@@ -79,13 +79,15 @@ module.exports = function (remoteApi, localApi, serializer) {
       if(_cb) _cb(err)
     })
 
+    var noop = function(){}
     if(remoteApi.async)
       remoteApi.async.forEach(function (name) {
         emitter[name] = function () {
           var args = [].slice.call(arguments)
-          var cb = args.pop()
-          if(!isFunction (cb))
-            throw new Error('callback must be provided')
+          if(isFunction (args[args.length - 1]))
+            cb = args.pop()
+          else
+            cb = noop
 
           ps.request({name: name, args: args}, cb)
         }
