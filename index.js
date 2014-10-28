@@ -79,7 +79,9 @@ module.exports = function (remoteApi, localApi, serializer) {
       if(_cb) _cb(err)
     })
 
-    var noop = function(){}
+    var noop = function(err) {
+      if (err) throw err
+    }
     if(remoteApi.async)
       remoteApi.async.forEach(function (name) {
         emitter[name] = function () {
