@@ -5,7 +5,8 @@ var mux = require('../')
 module.exports = function(serializer) {
   var client = {
     async: ['hello', 'goodbye'],
-    source: ['stuff', 'bstuff']
+    source: ['stuff', 'bstuff'],
+    sink: ['things']
   }
 
   tape('async', function (t) {
@@ -86,6 +87,30 @@ module.exports = function(serializer) {
       }))
     }))
 
+  })
+
+  tape('sink', function (t) {
+
+    var A = mux(client, null, serializer) ()
+    var B = mux(null, client, serializer) ({
+      things: function (someParam) {
+        return pull.collect(function(err, values) {
+          if (err) throw err
+          t.equal(someParam, 5)
+          t.equal(values.length, 5)
+          t.equal(values[0], 1)
+          t.equal(values[1], 2)
+          t.equal(values[2], 3)
+          t.equal(values[3], 4)
+          t.equal(values[4], 5)
+          t.end()
+        })
+      }
+    })
+
+    var s = A.createStream()
+    pull(s, pull.through(console.log), B.createStream(), pull.through(console.log), s)
+    pull(pull.values([1,2,3,4,5]), A.things(5))
   })
 
 

@@ -37,6 +37,14 @@ module.exports = function (remoteApi, localApi, serializer) {
       )
     }
 
+    function hasSink(name) {
+      return (
+        localApi.sink
+        && ~localApi.sink.indexOf(name)
+        && isFunction(local[name])
+      )
+    }
+
     function createPacketStream () {
 
       return PacketStream({
@@ -56,16 +64,33 @@ module.exports = function (remoteApi, localApi, serializer) {
             stream.read = null
             if(end) return stream.write(null, end)
 
-            if(!hasSource(name))
-              return stream.write(null, new Error('no source:'+name))
+            if (data.type == 'source') {
+              if(!hasSource(name))
+                return stream.write(null, new Error('no source:'+name))
 
-            var source, sink = pullWeird.sink(stream)
-            try {
-              source = local[name].apply(local, data.args)
-            } catch (err) {
-              return sink(pull.error(err))
+              var source, sink = pullWeird.sink(stream)
+              try {
+                source = local[name].apply(local, data.args)
+              } catch (err) {
+                return sink(pull.error(err))
+              }
+              sink(source)
             }
-            sink(source)
+            else if (data.type == 'sink') {
+              if(!hasSink(name))
+                return stream.write(null, new Error('no sink:'+name))
+
+              var sink, source = pullWeird.source(stream)
+              try {
+                sink = local[name].apply(local, data.args)
+              } catch (err) {
+                return pullWeird.sink(stream)(pull.error(err))
+              }
+              sink(source)
+            }
+            else {
+              return stream.write(null, new Error('unsupported stream type:'+data.type))
+            }
           }
         }
       })
@@ -98,6 +123,17 @@ module.exports = function (remoteApi, localApi, serializer) {
           var ws = ps.stream()
           var s = pullWeird.source(ws)
           ws.write({name: name, args: args, type: 'source'})
+          return s
+        }
+      })
+
+    if(remoteApi.sink)
+      remoteApi.sink.forEach(function (name) {
+        emitter[name] = function () {
+          var args = [].slice.call(arguments)
+          var ws = ps.stream()
+          var s = pullWeird.sink(ws)
+          ws.write({name: name, args: args, type: 'sink'})
           return s
         }
       })
