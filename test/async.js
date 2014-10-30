@@ -1,12 +1,14 @@
 var tape = require('tape')
 var pull = require('pull-stream')
+var pushable = require('pull-pushable')
 var mux = require('../')
 
 module.exports = function(serializer) {
   var client = {
     async: ['hello', 'goodbye'],
     source: ['stuff', 'bstuff'],
-    sink: ['things']
+    sink: ['things'],
+    duplex: ['suchstreamwow']
   }
 
   tape('async', function (t) {
@@ -111,6 +113,39 @@ module.exports = function(serializer) {
     var s = A.createStream()
     pull(s, pull.through(console.log), B.createStream(), pull.through(console.log), s)
     pull(pull.values([1,2,3,4,5]), A.things(5))
+  })
+
+  tape('duplex', function (t) {
+
+    var A = mux(client, null, serializer) ()
+    var B = mux(null, client, serializer) ({
+      suchstreamwow: function (someParam) {
+        // did the param come through?
+        t.equal(someParam, 5)
+
+        // normally, we'd use pull.values and pull.collect
+        // however, pull.values sends 'end' onto the stream, which closes the muxrpc stream immediately
+        // ...and we need the stream to stay open for the drain to collect
+        var nextValue = 0
+        var p = pushable()
+        for (var i=0; i < 5; i++)
+          p.push(i)
+        return {
+          source: p,
+          sink: pull.drain(function(value) {
+            t.equal(nextValue, value)
+            nextValue++
+            if (nextValue == 5)
+              t.end()
+          })
+        }
+      }
+    })
+
+    var s = A.createStream()
+    pull(s, pull.through(console.log.bind(console, 'IN')), B.createStream(), pull.through(console.log.bind(console,'OUT')), s)
+    var dup = A.suchstreamwow(5)
+    pull(dup, dup)
   })
 
 

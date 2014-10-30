@@ -45,6 +45,14 @@ module.exports = function (remoteApi, localApi, serializer) {
       )
     }
 
+    function hasDuplex(name) {
+      return (
+        localApi.duplex
+        && ~localApi.duplex.indexOf(name)
+        && isFunction(local[name])
+      )
+    }
+
     function createPacketStream () {
 
       return PacketStream({
@@ -87,6 +95,18 @@ module.exports = function (remoteApi, localApi, serializer) {
                 return pullWeird.sink(stream)(pull.error(err))
               }
               sink(source)
+            }
+            else if (data.type == 'duplex') {
+              if(!hasDuplex(name))
+                return stream.write(null, new Error('no duplex:'+name))
+
+              var s1 = pullWeird(stream)
+              try {
+                s2 = local[name].apply(local, data.args)
+              } catch (err) {
+                return s1.sink(pull.error(err))
+              }
+              pull(s1, s2, s1)
             }
             else {
               return stream.write(null, new Error('unsupported stream type:'+data.type))
@@ -134,6 +154,17 @@ module.exports = function (remoteApi, localApi, serializer) {
           var ws = ps.stream()
           var s = pullWeird.sink(ws)
           ws.write({name: name, args: args, type: 'sink'})
+          return s
+        }
+      })
+
+    if(remoteApi.duplex)
+      remoteApi.duplex.forEach(function (name) {
+        emitter[name] = function () {
+          var args = [].slice.call(arguments)
+          var ws = ps.stream()
+          var s = pullWeird(ws)
+          ws.write({name: name, args: args, type: 'duplex'})
           return s
         }
       })

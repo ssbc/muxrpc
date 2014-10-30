@@ -13,6 +13,7 @@
   },
   "devDependencies": {
     "tape": "~3.0.0",
+    "pull-pushable": "~1.1.3",
     "pull-serializer": "~0.2.0",
     "json-buffer": "~2.0.9"
   },
