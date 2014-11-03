@@ -15,7 +15,6 @@ module.exports = function (remoteApi, localApi, serializer) {
   localApi = localApi || {}
   remoteApi = remoteApi || {}
 
-
   return function (local) {
     local = local || {}
 
@@ -193,7 +192,9 @@ module.exports = function (remoteApi, localApi, serializer) {
       //set the cb, this applies to the first stream created only.
         _cb = cb
       once = true
-      return (serializer) ? serializer(ws) : ws
+      var stream = (serializer) ? serializer(ws) : ws
+      stream.close = ps.close
+      return stream
     }
 
     return emitter
