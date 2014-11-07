@@ -1,10 +1,19 @@
 var pull = require('pull-stream')
 // wrap pull streams around packet-stream's weird streams.
 
+function once (fn) {
+  var done = false
+  return function (err, val) {
+    if(done) return
+    done = true
+    fn(err, val)
+  }
+}
+
 module.exports = function (weird, done) {
   var buffer = [], ended = false, waiting
 
-  done = done || function () {}
+  done = once(done || function () {})
 
   weird.read = function (data, end) {
     ended = ended || end
@@ -17,7 +26,6 @@ module.exports = function (weird, done) {
     else if(!ended) buffer.push(data)
 
     if(ended) done(ended !== true ? ended : null)
-
   }
 
   return {
@@ -32,19 +40,29 @@ module.exports = function (weird, done) {
     },
     sink  : function (read) {
       pull.drain(function (data) {
+        //TODO: make this should only happen on a UNIPLEX stream.
+        if(ended) return false
         weird.write(data)
       }, function (err) {
-        weird.write(null, ended = err || true)
-        done(ended !== true ? ended : null)
-      }) (read)
+        if(!weird.writeEnd) weird.write(null, err || true)
+        done(err)
+      })
+      (read)
     }
   }
 }
 
-module.exports.source = function (s) {
-  return module.exports(s).source
+function uniplex (s, done) {
+  return module.exports(s, function (err) {
+    if(!s.writeEnd) s.write(null, err || true)
+    if(done) done(err)
+  })
 }
-module.exports.sink = function (s) {
-  return module.exports(s).sink
+
+module.exports.source = function (s, done) {
+  return uniplex(s, done).source
+}
+module.exports.sink = function (s, done) {
+  return uniplex(s, done).sink
 }
 
