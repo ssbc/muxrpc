@@ -2,7 +2,7 @@ var pull = require('pull-stream')
 var pullWeird = require('./pull-weird')
 var PacketStream = require('packet-stream')
 var EventEmitter = require('events').EventEmitter
-
+var Permissions = require('./permissions')
 function isFunction (f) {
   return 'function' === typeof f
 }
@@ -14,6 +14,8 @@ function isString (s) {
 module.exports = function (remoteApi, localApi, serializer) {
   localApi = localApi || {}
   remoteApi = remoteApi || {}
+
+  var perms = Permissions()
 
   return function (local) {
     local = local || {}
@@ -57,18 +59,32 @@ module.exports = function (remoteApi, localApi, serializer) {
       return PacketStream({
         request: function (opts, cb) {
           var name = opts.name
+          var err = perms.test(name)
+          if(err) return cb(err)
+
           if(!hasAsync(name))
             return cb(new Error('method not supported:'+name))
           var args = opts.args
-          args.push(cb)
+          var inCB = false
+          args.push(function (err, value) {
+            inCB = true
+            cb(err, value)
+          })
           //packet stream already has a thing to check cb fires only once.
           try { local[name].apply(local, args) }
-          catch (err) { cb(err) }
+          catch (err) {
+            if(inCB) throw err
+            cb(err)
+          }
         },
         stream: function (stream) {
           stream.read = function (data, end) {
             var name = data.name
             stream.read = null
+
+            var err = perms.test(name)
+            if(err) return stream.write(null, err)
+
             if(end) return stream.write(null, end)
 
             if (data.type == 'source') {
@@ -196,6 +212,8 @@ module.exports = function (remoteApi, localApi, serializer) {
       stream.close = ps.close
       return stream
     }
+
+    emitter.permissions = perms
 
     return emitter
   }
