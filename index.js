@@ -73,7 +73,7 @@ module.exports = function (remoteApi, localApi, serializer) {
 
             if (data.type == 'source') {
               if(!hasSource(name))
-                return stream.write(null, new Error('no source:'+name))
+                return stream.destroy(new Error('no source:'+name))
 
               var source, sink = pullWeird.sink(stream)
               try {
@@ -85,7 +85,7 @@ module.exports = function (remoteApi, localApi, serializer) {
             }
             else if (data.type == 'sink') {
               if(!hasSink(name))
-                return stream.write(null, new Error('no sink:'+name))
+                return stream.destroy(new Error('no sink:'+name))
 
               var sink, source = pullWeird.source(stream)
               try {
@@ -97,7 +97,7 @@ module.exports = function (remoteApi, localApi, serializer) {
             }
             else if (data.type == 'duplex') {
               if(!hasDuplex(name))
-                return stream.write(null, new Error('no duplex:'+name))
+                return stream.destroy(new Error('no duplex:'+name))
 
               var s1 = pullWeird(stream)
               try {
