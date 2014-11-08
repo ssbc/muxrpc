@@ -9,21 +9,19 @@ module.exports = function () {
   var blacklist = {}
 
   function perms (opts) {
-    if(opts.allow === null)
-      whitelist = null
-    else if(opts.allow) {
+    if(opts.allow) {
       whitelist = {}
       opts.allow.forEach(function (k) {
         whitelist[k] = true
       })
     }
+    else whitelist = null
 
-    if(opts.deny === null)
-      blacklist = {}
-    else if(opts.deny)
+    if(opts.deny)
       opts.deny.forEach(function (k) {
         blacklist[k] = true
       })
+    else blacklist = {}
 
     return this
   }
