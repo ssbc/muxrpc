@@ -57,6 +57,10 @@ module.exports = function (remoteApi, localApi, serializer) {
     function createPacketStream () {
 
       return PacketStream({
+        message: function (msg) {
+          if(msg.length > 0 && isString(msg[0]))
+            emitter._emit.apply(emitter, msg)
+        },
         request: function (opts, cb) {
           var name = opts.name
           var err = perms.test(name)
@@ -187,6 +191,16 @@ module.exports = function (remoteApi, localApi, serializer) {
           return s
         }
       })
+
+
+    emitter._emit = emitter.emit
+
+    emitter.emit = function () {
+      var args = [].slice.call(arguments)
+      if(args.length == 0) return
+      ps.message(args)
+      return emitter
+    }
 
     //this is the stream to the remote server.
     //it only makes sense to have one of these.
