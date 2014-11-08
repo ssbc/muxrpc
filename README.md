@@ -50,6 +50,47 @@ pull(a.stuff(), pull.drain(console.log))
 // 5
 ```
 
+## Permissions
+
+If you are exposing an api over a network connection,
+then you probably want some sort of authorization system.
+muxrpc provides some help with this, but leaves most of the trouble up to you.
+
+``` js
+
+var api = {
+  async: ['foo', 'bar', 'auth']
+}
+
+var rpc = muxrpc(null, api, serializer)({
+  foo: function (val, cb) {
+    cb(null, {okay: 'foo'})
+  },
+  bar: function (val, cb) {
+    cb(null, {okay: 'bar'})
+  },
+  auth: function (pass) {
+    //implement an auth function that sets the permissions,
+    //using allow or deny lists.
+
+    if(pass === 'whatever')
+      rpc.permissions({deny: ['bar']}) //allow everything except "bar"
+    else if(pass === 's3cr3tz')
+      rpc.permissions({}) //allow everything!!!
+    else return cb(new Error('ACCESS DENIED'))
+
+    //else we ARE authorized.
+    cb(null, 'ACCESS GRANTED')
+  }
+}).permissions({allow: ['auth']})
+
+//Get a stream to connect to the remote. As in the above example!
+var ss = rpc.createStream()
+
+```
+
+
+
 ## License
 
 MIT
