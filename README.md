@@ -74,9 +74,9 @@ var rpc = muxrpc(null, api, serializer)({
     //using allow or deny lists.
 
     if(pass === 'whatever')
-      rpc.permissions({deny: ['bar']}) //allow everything except "bar"
+      this.permissions({deny: ['bar']}) //allow everything except "bar"
     else if(pass === 's3cr3tz')
-      rpc.permissions({}) //allow everything!!!
+      this.permissions({}) //allow everything!!!
     else return cb(new Error('ACCESS DENIED'))
 
     //else we ARE authorized.
