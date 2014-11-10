@@ -1,7 +1,7 @@
 {
   "name": "muxrpc",
   "description": "combined multiplexing and rpc - because a node api needs streams & async",
-  "version": "0.6.0",
+  "version": "1.0.0",
   "homepage": "https://github.com/dominictarr/muxrpc",
   "repository": {
     "type": "git",
