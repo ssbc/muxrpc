@@ -60,6 +60,7 @@ module.exports = function (remoteApi, localApi, serializer) {
 
       return PacketStream({
         message: function (msg) {
+          if(isString(msg)) return
           if(msg.length > 0 && isString(msg[0]))
             emitter._emit.apply(emitter, msg)
         },
