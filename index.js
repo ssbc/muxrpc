@@ -75,7 +75,7 @@ module.exports = function (remoteApi, localApi, serializer) {
             cb(err, value)
           })
           //packet stream already has a thing to check cb fires only once.
-          try { local[name].apply(local, args) }
+          try { local[name].apply(emitter, args) }
           catch (err) {
             if(inCB) throw err
             cb(err)
@@ -97,7 +97,7 @@ module.exports = function (remoteApi, localApi, serializer) {
 
               var source, sink = pullWeird.sink(stream)
               try {
-                source = local[name].apply(local, data.args)
+                source = local[name].apply(emitter, data.args)
               } catch (err) {
                 return sink(pull.error(err))
               }
@@ -109,7 +109,7 @@ module.exports = function (remoteApi, localApi, serializer) {
 
               var sink, source = pullWeird.source(stream)
               try {
-                sink = local[name].apply(local, data.args)
+                sink = local[name].apply(emitter, data.args)
               } catch (err) {
                 return pullWeird.sink(stream)(pull.error(err))
               }
@@ -121,7 +121,7 @@ module.exports = function (remoteApi, localApi, serializer) {
 
               var s1 = pullWeird(stream)
               try {
-                s2 = local[name].apply(local, data.args)
+                s2 = local[name].apply(emitter, data.args)
               } catch (err) {
                 return s1.sink(pull.error(err))
               }
