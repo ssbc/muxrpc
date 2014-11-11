@@ -1,8 +1,10 @@
-var pull = require('pull-stream')
-var pullWeird = require('./pull-weird')
+var pull         = require('pull-stream')
+var pullWeird    = require('./pull-weird')
 var PacketStream = require('packet-stream')
 var EventEmitter = require('events').EventEmitter
-var Permissions = require('./permissions')
+var Permissions  = require('./permissions')
+var goodbye      = require('pull-goodbye')
+
 function isFunction (f) {
   return 'function' === typeof f
 }
@@ -139,9 +141,9 @@ module.exports = function (remoteApi, localApi, serializer) {
     //if we create the stream immediately,
     //we get the pull-stream's internal buffer
     //so all operations are queued for free!
-    var ws = pullWeird(ps, function (err) {
+    var ws = goodbye(pullWeird(ps, function (err) {
       if(_cb) _cb(err)
-    })
+    }))
 
     var noop = function(err) {
       if (err) throw err
@@ -213,7 +215,7 @@ module.exports = function (remoteApi, localApi, serializer) {
     emitter.createStream = function (cb) {
       if(ps.ended) {
         ps = createPacketStream()
-        ws = pullWeird(ps, cb)
+        ws = goodbye(pullWeird(ps, cb))
         once = false
       }
       else if(once)
