@@ -232,6 +232,11 @@ module.exports = function (remoteApi, localApi, serializer) {
 
     emitter.permissions = perms
 
+    emitter.close = function (cb) {
+      ps.close(cb)
+      return emitter
+    }
+
     return emitter
   }
 }
