@@ -49,7 +49,7 @@ tape('outer stream ends after close', function (t) {
   var as = A.createStream()
   pull(as, bs, as)
 
-  bs.close(function (err) {
+  A.close(function (err) {
     t.notOk(err)
   })
 
@@ -82,12 +82,12 @@ tape('close after uniplex streams end', function (t) {
   var as = A.createStream()
   pull(as, bs, as)
 
-  bs.close(function (err) {
+  B.close(function (err) {
     console.log('B CLOSE')
     t.notOk(err, 'bs is closed')
   })
 
-  as.close(function (err) {
+  A.close(function (err) {
     console.log('A CLOSE')
     t.notOk(err, 'as is closed')
   })
@@ -120,12 +120,12 @@ tape('close after uniplex streams end 2', function (t) {
 
   pull(as, bs, as)
 
-  bs.close(function (err) {
+  B.close(function (err) {
     console.log('B CLOSE')
     t.notOk(err, 'bs is closed')
   })
 
-  as.close(function (err) {
+  A.close(function (err) {
     console.log('A CLOSE')
     t.notOk(err, 'as is closed')
   })
@@ -165,12 +165,12 @@ tape('close after both sides of a duplex stream ends', function (t) {
 
   pull(as, bs, as)
 
-  bs.close(function (err) {
+  B.close(function (err) {
     console.log('B CLOSE')
     t.notOk(err, 'bs is closed')
   })
 
-  as.close(function (err) {
+  A.close(function (err) {
     console.log('A CLOSE')
     t.notOk(err, 'as is closed')
   })
