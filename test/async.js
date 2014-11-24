@@ -34,12 +34,7 @@ module.exports = function(serializer) {
       var buf = new Buffer([0, 1, 2, 3, 4])
       A.goodbye(buf, function (err, buf2) {
         if (err) throw err
-        t.equal(buf2.length, 5)
-        t.equal(buf2.readUInt8(0), 0)
-        t.equal(buf2.readUInt8(1), 1)
-        t.equal(buf2.readUInt8(2), 2)
-        t.equal(buf2.readUInt8(3), 3)
-        t.equal(buf2.readUInt8(4), 4)
+        t.deepEqual(buf2, buf)
         t.end()
       })
     })
@@ -49,6 +44,12 @@ module.exports = function(serializer) {
 
   tape('source', function (t) {
 
+    var expected = [
+          new Buffer([0, 1]),
+          new Buffer([2, 3]),
+          new Buffer([4, 5])
+        ]
+
     var A = mux(client, null, serializer) ()
     var B = mux(null, client, serializer) ({
       stuff: function (b) {
@@ -57,11 +58,7 @@ module.exports = function(serializer) {
         }))
       },
       bstuff: function() {
-        return pull.values([
-          new Buffer([0, 1]),
-          new Buffer([2, 3]),
-          new Buffer([4, 5])
-        ])
+        return pull.values(expected)
       }
     })
 
@@ -75,16 +72,7 @@ module.exports = function(serializer) {
 
       pull(A.bstuff(), pull.collect(function(err, ary) {
         if (err) throw err
-        console.log(ary)
-        t.equal(ary[0].length, 2)
-        t.equal(ary[0].readUInt8(0), 0)
-        t.equal(ary[0].readUInt8(1), 1)
-        t.equal(ary[1].length, 2)
-        t.equal(ary[1].readUInt8(0), 2)
-        t.equal(ary[1].readUInt8(1), 3)
-        t.equal(ary[2].length, 2)
-        t.equal(ary[2].readUInt8(0), 4)
-        t.equal(ary[2].readUInt8(1), 5)
+        t.deepEqual(ary, expected)
         t.end()
       }))
     }))
@@ -99,12 +87,7 @@ module.exports = function(serializer) {
         return pull.collect(function(err, values) {
           if (err) throw err
           t.equal(someParam, 5)
-          t.equal(values.length, 5)
-          t.equal(values[0], 1)
-          t.equal(values[1], 2)
-          t.equal(values[2], 3)
-          t.equal(values[3], 4)
-          t.equal(values[4], 5)
+          t.deepEqual(values, [1, 2, 3, 4, 5])
           t.end()
         })
       }
@@ -271,6 +254,42 @@ module.exports = function(serializer) {
     })
 
     s.source(true, function () {})
+  })
+
+  var client2 = {
+    async: ['salutations.hello', 'salutations.goodbye'],
+  }
+
+
+  tape('nested methods', function (t) {
+    var A = mux(client2, null, serializer) ()
+    var B = mux(null, client2, serializer) ({
+      salutations: {
+        hello: function (a, cb) {
+          cb(null, 'hello, '+a)
+        },
+        goodbye: function(b, cb) {
+          cb(null, b)
+        }
+      }
+    })
+
+    var s = A.createStream()
+    pull(s, pull.through(console.log), B.createStream(), pull.through(console.log), s)
+
+    A.salutations.hello('world', function (err, value) {
+      if(err) throw err
+      console.log(value)
+      t.equal(value, 'hello, world')
+
+      var buf = new Buffer([0, 1, 2, 3, 4])
+      A.salutations.goodbye(buf, function (err, buf2) {
+        if (err) throw err
+        t.deepEqual(buf2, buf)
+        t.end()
+      })
+    })
+
   })
 
 }
