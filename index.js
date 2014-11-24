@@ -28,7 +28,7 @@ module.exports = function (remoteApi, localApi, serializer) {
       return (
         localApi.async
         && ~localApi.async.indexOf(name)
-        && isFunction(local[name])
+        && isFunction(get(name))
       )
     }
 
@@ -36,7 +36,7 @@ module.exports = function (remoteApi, localApi, serializer) {
       return (
         localApi.source
         && ~localApi.source.indexOf(name)
-        && isFunction(local[name])
+        && isFunction(get(name))
       )
     }
 
@@ -44,7 +44,7 @@ module.exports = function (remoteApi, localApi, serializer) {
       return (
         localApi.sink
         && ~localApi.sink.indexOf(name)
-        && isFunction(local[name])
+        && isFunction(get(name))
       )
     }
 
@@ -52,8 +52,28 @@ module.exports = function (remoteApi, localApi, serializer) {
       return (
         localApi.duplex
         && ~localApi.duplex.indexOf(name)
-        && isFunction(local[name])
+        && isFunction(get(name))
       )
+    }
+
+    function add(name, fn) {
+      if(~name.indexOf('.')) {
+        var parts = name.split('.')
+        //only two levels are supported
+        var group = parts[0]
+        name = parts[1]
+        emitter[group] = emitter[group] || {}
+        emitter[group][name] = fn
+      }
+      else
+        emitter[name] = fn
+    }
+
+    function get(name) {
+      if(local[name]) return local[name]
+      var parts = name.split('.')
+      var obj = local[parts[0]]; name = parts[1]
+      return obj && obj[name]
     }
 
     function createPacketStream () {
@@ -78,7 +98,7 @@ module.exports = function (remoteApi, localApi, serializer) {
             cb(err, value)
           })
           //packet stream already has a thing to check cb fires only once.
-          try { local[name].apply(emitter, args) }
+          try { get(name).apply(emitter, args) }
           catch (err) {
             if(inCB) throw err
             cb(err)
@@ -100,7 +120,7 @@ module.exports = function (remoteApi, localApi, serializer) {
 
               var source, sink = pullWeird.sink(stream)
               try {
-                source = local[name].apply(emitter, data.args)
+                source = get(name).apply(emitter, data.args)
               } catch (err) {
                 return sink(pull.error(err))
               }
@@ -112,7 +132,7 @@ module.exports = function (remoteApi, localApi, serializer) {
 
               var sink, source = pullWeird.source(stream)
               try {
-                sink = local[name].apply(emitter, data.args)
+                sink = get(name).apply(emitter, data.args)
               } catch (err) {
                 return pullWeird.sink(stream)(pull.error(err))
               }
@@ -124,7 +144,7 @@ module.exports = function (remoteApi, localApi, serializer) {
 
               var s1 = pullWeird(stream)
               try {
-                s2 = local[name].apply(emitter, data.args)
+                s2 = get(name).apply(emitter, data.args)
               } catch (err) {
                 return s1.sink(pull.error(err))
               }
@@ -149,9 +169,10 @@ module.exports = function (remoteApi, localApi, serializer) {
     var noop = function(err) {
       if (err) throw err
     }
+
     if(remoteApi.async)
       remoteApi.async.forEach(function (name) {
-        emitter[name] = function () {
+        add(name, function () {
           var args = [].slice.call(arguments)
           if(isFunction (args[args.length - 1]))
             cb = args.pop()
@@ -159,40 +180,40 @@ module.exports = function (remoteApi, localApi, serializer) {
             cb = noop
 
           ps.request({name: name, args: args}, cb)
-        }
+        })
       })
 
     if(remoteApi.source)
       remoteApi.source.forEach(function (name) {
-        emitter[name] = function () {
+        add(name, function () {
           var args = [].slice.call(arguments)
           var ws = ps.stream()
           var s = pullWeird.source(ws)
           ws.write({name: name, args: args, type: 'source'})
           return s
-        }
+        })
       })
 
     if(remoteApi.sink)
       remoteApi.sink.forEach(function (name) {
-        emitter[name] = function () {
+        add(name, function () {
           var args = [].slice.call(arguments)
           var ws = ps.stream()
           var s = pullWeird.sink(ws)
           ws.write({name: name, args: args, type: 'sink'})
           return s
-        }
+        })
       })
 
     if(remoteApi.duplex)
       remoteApi.duplex.forEach(function (name) {
-        emitter[name] = function () {
+        add(name, function () {
           var args = [].slice.call(arguments)
           var ws = ps.stream()
           var s = pullWeird(ws)
           ws.write({name: name, args: args, type: 'duplex'})
           return s
-        }
+        })
       })
 
 
