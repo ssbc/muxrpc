@@ -11,10 +11,10 @@ var MRPC = require('muxrpc')
 //we need a manifest of methods we wish to expose.
 var api = {
   //async is a normal async function
-  async: ['hello'],
+  hello: 'async',
 
   //source is a pull-stream (readable)
-  source: ['stuff']
+  stuff: 'source'
 
   //TODO: sink and duplex pull-streams
 }
@@ -59,7 +59,9 @@ muxrpc provides some help with this, but leaves most of the trouble up to you.
 ``` js
 
 var api = {
-  async: ['foo', 'bar', 'auth']
+  foo: 'async',
+  bar: 'async',
+  auth: 'async'
 }
 
 var rpc = muxrpc(null, api, serializer)({
