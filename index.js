@@ -13,6 +13,19 @@ function isString (s) {
   return 'string' === typeof s
 }
 
+function isObject (o) {
+  return o && 'object' === typeof o
+}
+
+function getPath(obj, path) {
+  if(isString(path)) return obj[path]
+  for(var i = 0; i < path.length; i++) {
+    obj = obj[path[i]]
+    if(null == obj) return obj
+  }
+  return obj
+}
+
 module.exports = function (remoteApi, localApi, serializer) {
   localApi = localApi || {}
   remoteApi = remoteApi || {}
@@ -24,56 +37,12 @@ module.exports = function (remoteApi, localApi, serializer) {
 
     var emitter = new EventEmitter ()
 
-    function hasAsync(name) {
-      return (
-        localApi.async
-        && ~localApi.async.indexOf(name)
-        && isFunction(get(name))
-      )
-    }
-
-    function hasSource(name) {
-      return (
-        localApi.source
-        && ~localApi.source.indexOf(name)
-        && isFunction(get(name))
-      )
-    }
-
-    function hasSink(name) {
-      return (
-        localApi.sink
-        && ~localApi.sink.indexOf(name)
-        && isFunction(get(name))
-      )
-    }
-
-    function hasDuplex(name) {
-      return (
-        localApi.duplex
-        && ~localApi.duplex.indexOf(name)
-        && isFunction(get(name))
-      )
-    }
-
-    function add(name, fn) {
-      if(~name.indexOf('.')) {
-        var parts = name.split('.')
-        //only two levels are supported
-        var group = parts[0]
-        name = parts[1]
-        emitter[group] = emitter[group] || {}
-        emitter[group][name] = fn
-      }
-      else
-        emitter[name] = fn
+    function has(type, name) {
+      return type === getPath(localApi, name) && isFunction(get(name))
     }
 
     function get(name) {
-      if(local[name]) return local[name]
-      var parts = name.split('.')
-      var obj = local[parts[0]]; name = parts[1]
-      return obj && obj[name]
+      return getPath(local, name)
     }
 
     function createPacketStream () {
@@ -88,8 +57,7 @@ module.exports = function (remoteApi, localApi, serializer) {
           var name = opts.name
           var err = perms.test(name)
           if(err) return cb(err)
-
-          if(!hasAsync(name))
+          if(!has('async', name))
             return cb(new Error('method not supported:'+name))
           var args = opts.args
           var inCB = false
@@ -107,6 +75,8 @@ module.exports = function (remoteApi, localApi, serializer) {
         stream: function (stream) {
           stream.read = function (data, end) {
             var name = data.name
+            var type = data.type
+
             stream.read = null
 
             var err = perms.test(name)
@@ -114,10 +84,10 @@ module.exports = function (remoteApi, localApi, serializer) {
 
             if(end) return stream.write(null, end)
 
-            if (data.type == 'source') {
-              if(!hasSource(name))
-                return stream.destroy(new Error('no source:'+name))
+            if (!has(type, name))
+                return stream.destroy(new Error('no '+type+':'+name))
 
+            if(type === 'source') {
               var source, sink = pullWeird.sink(stream)
               try {
                 source = get(name).apply(emitter, data.args)
@@ -126,10 +96,7 @@ module.exports = function (remoteApi, localApi, serializer) {
               }
               sink(source)
             }
-            else if (data.type == 'sink') {
-              if(!hasSink(name))
-                return stream.destroy(new Error('no sink:'+name))
-
+            else if (type == 'sink') {
               var sink, source = pullWeird.source(stream)
               try {
                 sink = get(name).apply(emitter, data.args)
@@ -138,10 +105,7 @@ module.exports = function (remoteApi, localApi, serializer) {
               }
               sink(source)
             }
-            else if (data.type == 'duplex') {
-              if(!hasDuplex(name))
-                return stream.destroy(new Error('no duplex:'+name))
-
+            else if (type == 'duplex') {
               var s1 = pullWeird(stream)
               try {
                 s2 = get(name).apply(emitter, data.args)
@@ -151,7 +115,7 @@ module.exports = function (remoteApi, localApi, serializer) {
               pull(s1, s2, s1)
             }
             else {
-              return stream.write(null, new Error('unsupported stream type:'+data.type))
+              return stream.write(null, new Error('unsupported stream type:'+type))
             }
           }
         }
@@ -170,52 +134,61 @@ module.exports = function (remoteApi, localApi, serializer) {
       if (err) throw err
     }
 
-    if(remoteApi.async)
-      remoteApi.async.forEach(function (name) {
-        add(name, function () {
-          var args = [].slice.call(arguments)
-          if(isFunction (args[args.length - 1]))
-            cb = args.pop()
-          else
-            cb = noop
+    function createMethod(name, type) {
+      return (
+        'async' === type ?
+          function () {
+            var args = [].slice.call(arguments)
+            if(isFunction (args[args.length - 1]))
+              cb = args.pop()
+            else
+              cb = noop
 
-          ps.request({name: name, args: args}, cb)
-        })
-      })
+            ps.request({name: name, args: args}, cb)
+          }
+        : 'source' === type ?
+          function () {
+            var args = [].slice.call(arguments)
+            var ws = ps.stream()
+            var s = pullWeird.source(ws)
+            ws.write({name: name, args: args, type: 'source'})
+            return s
+          }
+        : 'sink' === type ?
+          function () {
+            var args = [].slice.call(arguments)
+            var ws = ps.stream()
+            var s = pullWeird.sink(ws)
+            ws.write({name: name, args: args, type: 'sink'})
+            return s
+          }
+        : 'duplex' === type ?
+          function () {
+            var args = [].slice.call(arguments)
+            var ws = ps.stream()
+            var s = pullWeird(ws)
+            ws.write({name: name, args: args, type: 'duplex'})
+            return s
+          }
+        : (function () {
+            throw new Error('unsupported type:' + JSON.stringify(type))
+          })()
+      )
+    }
 
-    if(remoteApi.source)
-      remoteApi.source.forEach(function (name) {
-        add(name, function () {
-          var args = [].slice.call(arguments)
-          var ws = ps.stream()
-          var s = pullWeird.source(ws)
-          ws.write({name: name, args: args, type: 'source'})
-          return s
-        })
-      })
+    function addApi(obj, api, path) {
+      for(var name in api) {
+        var type = api[name]
+        var _path = path ? path.concat(name) : [name]
+        obj[name] =
+            isObject(type)
+          ? addApi({}, type, _path)
+          : createMethod(_path, type)
+      }
+      return obj
+    }
 
-    if(remoteApi.sink)
-      remoteApi.sink.forEach(function (name) {
-        add(name, function () {
-          var args = [].slice.call(arguments)
-          var ws = ps.stream()
-          var s = pullWeird.sink(ws)
-          ws.write({name: name, args: args, type: 'sink'})
-          return s
-        })
-      })
-
-    if(remoteApi.duplex)
-      remoteApi.duplex.forEach(function (name) {
-        add(name, function () {
-          var args = [].slice.call(arguments)
-          var ws = ps.stream()
-          var s = pullWeird(ws)
-          ws.write({name: name, args: args, type: 'duplex'})
-          return s
-        })
-      })
-
+    addApi(emitter, remoteApi)
 
     emitter._emit = emitter.emit
 
