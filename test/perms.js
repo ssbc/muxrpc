@@ -5,8 +5,12 @@ var mux = require('../')
 var cont = require('cont')
 
 var api = {
-  async: ['login', 'logout', 'get', 'put', 'del'],
-  source: ['read']
+  login  : 'async',
+  logout : 'async',
+  get    : 'async',
+  put    : 'async',
+  del    : 'async',
+  read   : 'source',
 }
 
 function id (e) {

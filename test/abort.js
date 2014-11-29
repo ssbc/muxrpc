@@ -21,7 +21,7 @@ module.exports = function (serializer) {
   tape('stream abort', function (t) {
 
     var client = {
-      sink: ['drainAbort']
+      drainAbort: 'sink'
     }
 
     var A = mux(client, null, serializer) ()

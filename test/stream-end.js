@@ -10,16 +10,19 @@ function delay(fun) {
   }
 }
 
+var client = {
+  hello  : 'async',
+  goodbye: 'async',
+  stuff  : 'source',
+  bstuff : 'source',
+  things : 'sink',
+  echo   : 'duplex',
+  suchstreamwow: 'duplex'
+}
+
 tape('outer stream ends after close', function (t) {
 
   t.plan(3)
-
-  var client = {
-    async: ['hello', 'goodbye'],
-    source: ['stuff', 'bstuff'],
-    sink: ['things'],
-    duplex: ['suchstreamwow']
-  }
 
   var A = mux(client, null) ()
   var B = mux(null, client) ({
@@ -58,13 +61,6 @@ tape('outer stream ends after close', function (t) {
 tape('close after uniplex streams end', function (t) {
   t.plan(4)
 
-  var client = {
-    async: ['hello', 'goodbye'],
-    source: ['stuff', 'bstuff'],
-    sink: ['things'],
-    duplex: ['suchstreamwow']
-  }
-
   var A = mux(client, null) ()
   var B = mux(null, client) ({
     stuff: function () {
@@ -95,13 +91,6 @@ tape('close after uniplex streams end', function (t) {
 
 tape('close after uniplex streams end 2', function (t) {
   t.plan(4)
-
-  var client = {
-    async: ['hello', 'goodbye'],
-    source: ['stuff', 'bstuff'],
-    sink: ['things'],
-    duplex: ['echo']
-  }
 
   var A = mux(client, null) ()
   var B = mux(null, client) ({
@@ -134,13 +123,6 @@ tape('close after uniplex streams end 2', function (t) {
 tape('close after both sides of a duplex stream ends', function (t) {
 
   t.plan(4)
-
-  var client = {
-    async: ['hello', 'goodbye'],
-    source: ['stuff', 'bstuff'],
-    sink: ['things'],
-    duplex: ['echo']
-  }
 
   var A = mux(client, null) ()
   var B = mux(null, client) ({

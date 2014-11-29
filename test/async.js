@@ -5,10 +5,12 @@ var mux = require('../')
 
 module.exports = function(serializer) {
   var client = {
-    async: ['hello', 'goodbye'],
-    source: ['stuff', 'bstuff'],
-    sink: ['things'],
-    duplex: ['suchstreamwow']
+    hello  : 'async',
+    goodbye: 'async',
+    stuff  : 'source',
+    bstuff : 'source',
+    things : 'sink',
+    suchstreamwow: 'duplex'
   }
 
   tape('async', function (t) {
@@ -257,7 +259,10 @@ module.exports = function(serializer) {
   })
 
   var client2 = {
-    async: ['salutations.hello', 'salutations.goodbye'],
+    salutations: {
+      hello: 'async',
+      goodbye: 'async'
+    }
   }
 
 
