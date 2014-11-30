@@ -4,7 +4,6 @@ exports.set = function (obj, path, value) {
   var _obj, _k
   for(var i = 0; i < path.length; i++) {
     var k = path[i]
-    console.log('set', k)
     obj[k] = obj[k] || {}
     _obj = obj; _k = k
     obj = obj[k]
@@ -25,17 +24,13 @@ exports.get = function (obj, path) {
 exports.prefix = function (obj, path) {
   var value, parent = obj
 
-
-
   for(var i = 0; i < path.length; i++) {
     var k = path[i]
     value = obj = obj[k]
     if('object' !== typeof obj) {
-      console.log('RETURN', i, obj)
       return obj
     }
     parent = obj
   }
-  console.log('PRE', typeof value, value)
   return 'object' !== typeof value ? !!value : false
 }

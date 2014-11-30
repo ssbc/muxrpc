@@ -11,7 +11,7 @@ function join (str) {
 }
 
 function toArray(str) {
-  return isArray(str) ? str : [str]
+  return isArray(str) ? str : str.split('.')
 }
 
 module.exports = function () {
@@ -38,8 +38,6 @@ module.exports = function () {
 
   perms.test = function (name, args) {
     name = isArray(name) ? name : [name]
-    whitelist && console.log('ALLOW', name, whitelist, u.prefix(whitelist, name))
-    whitelist && console.log('DENY ', name, blacklist, u.prefix(blacklist, name))
     if(whitelist && !u.prefix(whitelist, name))
       return new Error('method:'+name + ' is not on whitelist')
 
