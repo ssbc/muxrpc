@@ -58,3 +58,38 @@ tape('deep blacklist', function (t) {
 })
 
 
+tape('deep blacklist, dotted strings', function (t) {
+
+  var p = permissions()
+
+  p({deny: ['foo.quxx']})
+
+  t.ok(p.test(['foo', 'quxx']))
+  t.notOk(p.test(['foo', 'bar']))
+  t.end()
+
+})
+
+tape('matches', function (t) {
+
+
+  var p = permissions()
+
+  p({allow: ['bar', 'foo'], deny: ['foo.quxx']})
+
+  function allowed(path) {
+    t.notOk(p.test(path), 'allowed:' + path)
+  }
+
+  function denied (path) {
+    t.ok(p.test(path), 'denied:' + path)
+  }
+
+  denied(['foo', 'quxx'])
+  allowed(['foo', 'bar'])
+
+  allowed(['bar'])
+  allowed(['bar', 'foo'])
+
+  t.end()
+})
