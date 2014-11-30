@@ -11,6 +11,12 @@ var api = {
   put    : 'async',
   del    : 'async',
   read   : 'source',
+  nested: {
+    get    : 'async',
+    put    : 'async',
+    del    : 'async',
+    read   : 'source'
+  }
 }
 
 function id (e) {
@@ -41,6 +47,14 @@ function createServerAPI (store) {
       //allow write operations
       else if(opts.name === 'admin' && opts.pass === "admin") //whatelse?
         rpc.permissions({deny: null, allow: null}) //allow everything
+
+      //
+      else if(opts.name === 'nested' && opts.pass === 'foofoo')
+        rpc.permissions({
+          //read only access to nested methods
+          allow: ['nested'],
+          deny: [['nested', 'put'], ['nested', 'del']]
+        })
 
       //you are nobody!
       else
@@ -77,6 +91,8 @@ function createServerAPI (store) {
       )
     }
   }
+
+  session.nested = session
 
   return rpc = mux(null, api, id)(session).permissions({allow: ['login']})
 }
@@ -201,3 +217,71 @@ tape('multiple sessions at once', function (t) {
 
 })
 
+tape('nested sessions', function (t) {
+  var server = createServerAPI(store)
+  var client = createClientAPI()
+
+  var ss = server.createStream()
+  var cs = client.createStream()
+
+  pull(cs, ss, cs)
+
+  cont.para([
+    function (cb) {
+      client.nested.get('foo', function (err) {
+        t.ok(err); cb()
+      })
+    },
+    function (cb) {
+      client.nested.put('foo', function (err) {
+        t.ok(err); cb()
+      })
+    },
+    function (cb) {
+      client.nested.del('foo', function (err) {
+        t.ok(err); cb()
+      })
+    },
+    function (cb) {
+      pull(client.nested.read(), pull.collect(function (err) {
+        t.ok(err); cb()
+      }))
+    }
+  ])(function (err) {
+    client.login({name: 'nested', pass: 'foofoo'}, function (err, res) {
+      cont.para([
+        function (cb) {
+          client.nested.get('foo', function (err, value) {
+            if(err) throw err
+            t.equal(value, 2, 'foo should be 2')
+            cb()
+          })
+        },
+        function (cb) {
+          client.nested.put('foo', -1, function (err) {
+            t.ok(err); cb()
+          })
+        },
+        function (cb) {
+          client.nested.del('foo', function (err) {
+            t.ok(err); cb()
+          })
+        },
+        function (cb) {
+          pull(client.nested.read(), pull.collect(function (err, ary) {
+            if(err) throw err
+            t.deepEqual(ary, [
+              {key: 'foo', value: 2},
+              {key: 'bar', value: 2},
+              {key: 'baz', value: 3},
+            ]); cb()
+          }))
+        }
+      ])(function (err) {
+          
+          t.end()
+        })
+    })
+  })
+
+})
