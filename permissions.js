@@ -1,7 +1,17 @@
+var u = require('./util')
 
+var isArray = Array.isArray
 
 function isFunction (f) {
   return 'function' === typeof f
+}
+
+function join (str) {
+  return Array.isArray(str) ? str.join('.') : str
+}
+
+function toArray(str) {
+  return isArray(str) ? str : [str]
 }
 
 module.exports = function () {
@@ -11,15 +21,15 @@ module.exports = function () {
   function perms (opts) {
     if(opts.allow) {
       whitelist = {}
-      opts.allow.forEach(function (k) {
-        whitelist[k] = true
+      opts.allow.forEach(function (path) {
+        u.set(whitelist, toArray(path), true)
       })
     }
     else whitelist = null
 
     if(opts.deny)
-      opts.deny.forEach(function (k) {
-        blacklist[k] = true
+      opts.deny.forEach(function (path) {
+        u.set(blacklist, toArray(path), true)
       })
     else blacklist = {}
 
@@ -27,11 +37,15 @@ module.exports = function () {
   }
 
   perms.test = function (name, args) {
-      if(whitelist && !whitelist[name])
-        return new Error('method:'+name + ' is not on whitelist')
-      if(blacklist[name])
-        return new Error('method:'+name + ' is on blacklist')
-    }
+    name = isArray(name) ? name : [name]
+    whitelist && console.log('ALLOW', name, whitelist, u.prefix(whitelist, name))
+    whitelist && console.log('DENY ', name, blacklist, u.prefix(blacklist, name))
+    if(whitelist && !u.prefix(whitelist, name))
+      return new Error('method:'+name + ' is not on whitelist')
+
+    if(blacklist && u.prefix(blacklist, name))
+      return new Error('method:'+name + ' is on blacklist')
+  }
 
   return perms
 }
