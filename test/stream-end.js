@@ -22,7 +22,7 @@ var client = {
 
 tape('outer stream ends after close', function (t) {
 
-  t.plan(3)
+  t.plan(4)
 
   var A = mux(client, null) ()
   var B = mux(null, client) ({
@@ -52,6 +52,10 @@ tape('outer stream ends after close', function (t) {
   var as = A.createStream()
   pull(as, bs, as)
 
+  A.on('closed', function () {
+    t.ok(true)
+  })
+
   A.close(function (err) {
     t.notOk(err)
   })
@@ -59,7 +63,7 @@ tape('outer stream ends after close', function (t) {
 })
 
 tape('close after uniplex streams end', function (t) {
-  t.plan(4)
+  t.plan(6)
 
   var A = mux(client, null) ()
   var B = mux(null, client) ({
@@ -78,9 +82,17 @@ tape('close after uniplex streams end', function (t) {
   var as = A.createStream()
   pull(as, bs, as)
 
+  B.on('closed', function () {
+    t.ok(true)
+  })
+
   B.close(function (err) {
     console.log('B CLOSE')
     t.notOk(err, 'bs is closed')
+  })
+
+  A.on('closed', function () {
+    t.ok(true)
   })
 
   A.close(function (err) {
@@ -122,7 +134,7 @@ tape('close after uniplex streams end 2', function (t) {
 
 tape('close after both sides of a duplex stream ends', function (t) {
 
-  t.plan(4)
+  t.plan(6)
 
   var A = mux(client, null) ()
   var B = mux(null, client) ({
@@ -147,9 +159,17 @@ tape('close after both sides of a duplex stream ends', function (t) {
 
   pull(as, bs, as)
 
+  B.on('closed', function () {
+    t.ok(true)
+  })
+
   B.close(function (err) {
     console.log('B CLOSE')
     t.notOk(err, 'bs is closed')
+  })
+
+  A.on('closed', function () {
+    t.ok(true)
   })
 
   A.close(function (err) {
