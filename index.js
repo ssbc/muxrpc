@@ -231,7 +231,7 @@ module.exports = function (remoteApi, localApi, serializer) {
       ps.close(function (err) {
         if(!emitter.closed) {
           emitter.closed = true
-          emitter.emit('closed')
+          emitter._emit('closed')
         }
         cb && cb(err)
       })
