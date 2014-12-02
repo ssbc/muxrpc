@@ -226,8 +226,15 @@ module.exports = function (remoteApi, localApi, serializer) {
 
     emitter.permissions = perms
 
+    emitter.closed = false
     emitter.close = function (cb) {
-      ps.close(cb)
+      ps.close(function (err) {
+        if(!emitter.closed) {
+          emitter.closed = true
+          emitter.emit('closed')
+        }
+        cb && cb(err)
+      })
       return emitter
     }
 
