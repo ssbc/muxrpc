@@ -130,8 +130,12 @@ module.exports = function (remoteApi, localApi, serializer) {
       if(_cb) _cb(err)
     }))
 
-    var noop = function(err) {
+    function noop (err) {
       if (err) throw err
+    }
+
+    function last (ary) {
+      return ary[ary.length - 1]
     }
 
     function createMethod(name, type) {
@@ -157,16 +161,19 @@ module.exports = function (remoteApi, localApi, serializer) {
         : 'sink' === type ?
           function () {
             var args = [].slice.call(arguments)
+            var cb = isFunction (last(args)) ? args.pop() : noop
             var ws = ps.stream()
-            var s = pullWeird.sink(ws)
+            var s = pullWeird.sink(ws, cb)
             ws.write({name: name, args: args, type: 'sink'})
             return s
           }
         : 'duplex' === type ?
           function () {
             var args = [].slice.call(arguments)
+            var cb = isFunction (last(args)) ? args.pop() : noop
+
             var ws = ps.stream()
-            var s = pullWeird(ws)
+            var s = pullWeird(ws, cb)
             ws.write({name: name, args: args, type: 'duplex'})
             return s
           }
