@@ -297,6 +297,46 @@ module.exports = function(serializer) {
 
   })
 
+  tape('sink', function (t) {
+    var A = mux(client, null, serializer)()
+    var B = mux(null, client, serializer)({
+      things: function (len) {
+        return pull.collect(function (err, ary) {
+          t.equal(ary.length, len)
+        })
+      }
+    })
+
+    var s = A.createStream(); pull(s, B.createStream(), s)
+
+    pull(pull.values([1,2,3]), A.things(3, function (err) {
+      if(err) throw err
+      t.end()
+    }))
+  })
+
+  tape('sink - abort', function (t) {
+    var err = new Error('test abort error')
+
+    var A = mux(client, null, serializer)()
+    var B = mux(null, client, serializer)({
+      things: function (len) {
+        return function (read) {
+          read(err, function () {})
+        }
+      }
+    })
+
+    var s = A.createStream(); pull(s, B.createStream(), s)
+
+    pull(pull.values([1,2,3]), A.things(3, function (_err) {
+      t.ok(_err)
+      t.equal(_err.message, err.message)
+      t.end()
+    }))
+
+  })
+
 }
 
 //see ./jsonb.js for tests with serialization.
