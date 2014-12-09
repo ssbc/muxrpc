@@ -19,7 +19,7 @@ var api = {
   //TODO: sink and duplex pull-streams
 }
 
-//pass the api into the contructor, and then pass the object you are wrapping
+//pass the api into the constructor, and then pass the object you are wrapping
 //(if there is a local api)
 var client = MRPC(api, null) () //remoteApi, localApi
 var server = MRPC(null, api) ({
