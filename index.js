@@ -1,3 +1,4 @@
+'use strict'
 var pull         = require('pull-stream')
 var pullWeird    = require('./pull-weird')
 var PacketStream = require('packet-stream')
@@ -106,7 +107,7 @@ module.exports = function (remoteApi, localApi, serializer) {
               sink(source)
             }
             else if (type == 'duplex') {
-              var s1 = pullWeird(stream)
+              var s1 = pullWeird(stream), s2
               try {
                 s2 = get(name).apply(emitter, data.args)
               } catch (err) {
@@ -118,6 +119,12 @@ module.exports = function (remoteApi, localApi, serializer) {
               return stream.write(null, new Error('unsupported stream type:'+type))
             }
           }
+        },
+
+        close: function (err) {
+          if(emitter.closed) return
+          emitter.closed = true
+          emitter._emit('closed', err)
         }
       })
     }
@@ -143,10 +150,8 @@ module.exports = function (remoteApi, localApi, serializer) {
         'async' === type ?
           function () {
             var args = [].slice.call(arguments)
-            if(isFunction (args[args.length - 1]))
-              cb = args.pop()
-            else
-              cb = noop
+            var cb = isFunction (args[args.length - 1])
+                   ? args.pop() : noop
 
             ps.request({name: name, args: args}, cb)
           }
@@ -217,7 +222,17 @@ module.exports = function (remoteApi, localApi, serializer) {
     emitter.createStream = function (cb) {
       if(ps.ended) {
         ps = createPacketStream()
-        ws = goodbye(pullWeird(ps, cb))
+        ws = goodbye(pullWeird(ps, function (err) {
+          console.log('close' ,emitter.closed)
+          if(!emitter.closed) {
+            emitter.closed = true
+            emitter._emit('closed')
+            if(err) {
+              if(cb) cb(err)
+              else emitter.emit('error', err)
+            }
+          }
+        }))
         once = false
       }
       else if(once)
