@@ -173,9 +173,35 @@ tape('close after both sides of a duplex stream ends', function (t) {
   })
 
   A.close(function (err) {
-    console.log('A CLOSE')
+    console.log('A CLOSE', err)
     t.notOk(err, 'as is closed')
   })
 
 
 })
+
+tape('closed is emitted when stream disconnects', function (t) {
+  t.plan(2)
+  var A = mux(client, null) ()
+  A.on('closed', function (err) {
+    console.log('EMIT CLOSED')
+    t.notOk(err)
+  })
+  pull(pull.empty(), A.createStream(function (err) {
+    console.log(err)
+    t.notOk(err) //end of parent stream
+  }), pull.drain())
+})
+
+tape('closed is emitted with error when stream errors', function (t) {
+  t.plan(2)
+  var A = mux(client, null) ()
+  A.on('closed', function (err) {
+    t.notOk(err)
+  })
+  pull(pull.empty(), A.createStream(function (err) {
+    console.log(err)
+    t.notOk(err) //end of parent stream
+  }), pull.drain())
+})
+
