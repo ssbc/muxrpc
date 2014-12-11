@@ -121,12 +121,19 @@ module.exports = function (remoteApi, localApi, serializer) {
           }
         },
 
-        close: function (err) {
-          if(emitter.closed) return
-          emitter.closed = true
-          emitter._emit('closed', err)
-        }
+        close: closed
       })
+    }
+
+    function closed (err) {
+      if(!emitter.closed) {
+        emitter.closed = true
+        emitter._emit('closed')
+        if(_cb) {
+          var cb = _cb; _cb = null; cb(err)
+        }
+        else if(err) emitter.emit('error', err)
+      }
     }
 
     var ps = createPacketStream(), _cb
@@ -134,6 +141,7 @@ module.exports = function (remoteApi, localApi, serializer) {
     //we get the pull-stream's internal buffer
     //so all operations are queued for free!
     var ws = goodbye(pullWeird(ps, function (err) {
+      closed()
       if(_cb) _cb(err)
     }))
 
@@ -220,26 +228,18 @@ module.exports = function (remoteApi, localApi, serializer) {
     var once = false
 
     emitter.createStream = function (cb) {
+      _cb = cb
       if(ps.ended) {
         ps = createPacketStream()
+        emitter.closed = false
         ws = goodbye(pullWeird(ps, function (err) {
-          console.log('close' ,emitter.closed)
-          if(!emitter.closed) {
-            emitter.closed = true
-            emitter._emit('closed')
-            if(err) {
-              if(cb) cb(err)
-              else emitter.emit('error', err)
-            }
-          }
+          closed(err)
         }))
         once = false
       }
       else if(once)
         throw new Error('only one stream allowed at a time')
-      else
-      //set the cb, this applies to the first stream created only.
-        _cb = cb
+
       once = true
       var stream = (serializer) ? serializer(ws) : ws
       stream.close = ps.close
