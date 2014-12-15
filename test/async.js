@@ -81,6 +81,36 @@ module.exports = function(serializer) {
 
   })
 
+  tape('sync', function (t) {
+    var client = {
+      syncOk : 'sync',
+      syncErr: 'sync'
+    }
+
+    var A = mux(client, null, serializer) ()
+    var B = mux(null, client, serializer) ({
+      syncOk: function (a) {
+        return {okay: a}
+      },
+      syncErr: function(b) {
+        throw new Error('test error:'+b)
+      }
+    })
+
+    var s = A.createStream()
+    pull(s, B.createStream(), s)
+
+    A.syncOk(true, function (err, value) {
+      t.deepEqual(value, {okay: true})
+      A.syncErr('blah', function (err) {
+        t.equal(err.message, 'test error:blah')
+        t.end()
+
+      })
+    })
+
+  })
+
   tape('sink', function (t) {
 
     var A = mux(client, null, serializer) ()
