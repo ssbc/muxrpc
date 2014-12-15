@@ -58,9 +58,18 @@ module.exports = function (remoteApi, localApi, serializer) {
           var name = opts.name
           var err = perms.test(name)
           if(err) return cb(err)
-          if(!has('async', name))
-            return cb(new Error('method not supported:'+name))
           var args = opts.args
+          if(has('sync', name)) {
+            var value, err
+            try {
+              value = get(name).apply(emitter, args)
+            } catch (_err) {
+              err = _err
+            }
+            return cb(err, value)
+          }
+          else if(!has('async', name))
+            return cb(new Error('method not supported:'+name))
           var inCB = false
           args.push(function (err, value) {
             inCB = true
@@ -155,7 +164,7 @@ module.exports = function (remoteApi, localApi, serializer) {
 
     function createMethod(name, type) {
       return (
-        'async' === type ?
+        'async' === type || 'sync' === type ?
           function () {
             var args = [].slice.call(arguments)
             var cb = isFunction (args[args.length - 1])
