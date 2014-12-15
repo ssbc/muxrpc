@@ -2,10 +2,10 @@
   "name": "muxrpc",
   "description": "combined multiplexing and rpc - because a node api needs streams & async",
   "version": "3.2.2",
-  "homepage": "https://github.com/dominictarr/muxrpc",
+  "homepage": "https://github.com/ssbc/muxrpc",
   "repository": {
     "type": "git",
-    "url": "git://github.com/dominictarr/muxrpc.git"
+    "url": "git://github.com/ssbc/muxrpc.git"
   },
   "dependencies": {
     "packet-stream": "~0.4.1",
