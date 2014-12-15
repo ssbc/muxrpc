@@ -2,6 +2,9 @@
 
 combined rpc and multiplexing, with pull-streams.
 
+[![build status](https://secure.travis-ci.org/ssbc/muxrpc.png)](http://travis-ci.org/ssbc/muxrpc)
+
+
 ## example
 
 ``` js
