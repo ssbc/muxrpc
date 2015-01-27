@@ -135,13 +135,19 @@ module.exports = function (remoteApi, localApi, serializer) {
     }
 
     function closed (err) {
-      if(!emitter.closed) {
+      if(emitter && !emitter.closed) {
         emitter.closed = true
         emitter._emit('closed')
         if(_cb) {
           var cb = _cb; _cb = null; cb(err)
         }
         else if(err) emitter.emit('error', err)
+
+        // deallocate
+        local = null
+        ps = null
+        ws = null
+        emitter = null
       }
     }
 
@@ -222,6 +228,8 @@ module.exports = function (remoteApi, localApi, serializer) {
     emitter._emit = emitter.emit
 
     emitter.emit = function () {
+      if (!ps)
+        return
       var args = [].slice.call(arguments)
       if(args.length == 0) return
       ps.message(args)

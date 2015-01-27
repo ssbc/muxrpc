@@ -10,10 +10,17 @@ function once (fn) {
   }
 }
 
-module.exports = function (weird, done) {
+module.exports = function (weird, _done) {
   var buffer = [], ended = false, waiting
 
-  done = once(done || function () {})
+  var done = once(function (err, v) {
+    _done && _done(err, v)
+
+    // deallocate
+    weird = null
+    _done = null    
+    waiting = null
+  })
 
   weird.read = function (data, end) {
     ended = ended || end
@@ -31,7 +38,7 @@ module.exports = function (weird, done) {
   return {
     source: function (abort, cb) {
       if(abort) {
-        weird.write(null, abort)
+        weird && weird.write(null, abort)
         cb(abort); done(abort !== true ? abort : null)
       }
       else if(buffer.length) cb(null, buffer.shift())
@@ -44,8 +51,8 @@ module.exports = function (weird, done) {
         if(ended) return false
         weird.write(data)
       }, function (err) {
-        if(!weird.writeEnd) weird.write(null, err || true)
-        done(err)
+        if(weird && !weird.writeEnd) weird.write(null, err || true)
+        done && done(err)
       })
       (read)
     }
