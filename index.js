@@ -246,7 +246,7 @@ module.exports = function (remoteApi, localApi, serializer) {
 
     emitter.createStream = function (cb) {
       _cb = cb
-      if(ps.ended) {
+      if(!ps || ps.ended) {
         ps = createPacketStream()
         emitter.closed = false
         ws = goodbye(pullWeird(ps, function (err) {
