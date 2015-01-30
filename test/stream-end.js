@@ -205,3 +205,15 @@ tape('closed is emitted with error when stream errors', function (t) {
   }), pull.drain())
 })
 
+
+tape('close and reopen', function (t) {
+
+  var A = mux(client, null) ()
+  var as = A.createStream()
+  A.on('closed', function () {
+    console.log('closed?')
+    as = A.createStream()
+    t.end()
+  })
+  as.close(function () {})
+})

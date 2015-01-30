@@ -135,6 +135,10 @@ module.exports = function (remoteApi, localApi, serializer) {
     }
 
     function closed (err) {
+      // deallocate
+      ps = null
+      ws = null
+
       if(emitter && !emitter.closed) {
         emitter.closed = true
         emitter._emit('closed')
@@ -142,12 +146,6 @@ module.exports = function (remoteApi, localApi, serializer) {
           var cb = _cb; _cb = null; cb(err)
         }
         else if(err) emitter.emit('error', err)
-
-        // deallocate
-        local = null
-        ps = null
-        ws = null
-        emitter = null
       }
     }
 
@@ -272,6 +270,13 @@ module.exports = function (remoteApi, localApi, serializer) {
           emitter.closed = true
           emitter._emit('closed')
         }
+
+        // deallocate
+        local = null
+        ps = null
+        ws = null
+        emitter = null
+
         cb && cb(err)
       })
       return emitter
