@@ -209,19 +209,18 @@ module.exports = function (remoteApi, localApi, serializer) {
       )
     }
 
-    function addApi(obj, api, path) {
+    //add all the api methods to emitter recursively
+    ;(function recurse (obj, api, path) {
       for(var name in api) {
         var type = api[name]
         var _path = path ? path.concat(name) : [name]
         obj[name] =
             isObject(type)
-          ? addApi({}, type, _path)
+          ? recurse({}, type, _path)
           : createMethod(_path, type)
       }
       return obj
-    }
-
-    addApi(emitter, remoteApi)
+    })(emitter, remoteApi)
 
     emitter._emit = emitter.emit
 
