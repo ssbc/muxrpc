@@ -31,7 +31,11 @@ module.exports = function (remoteApi, localApi, serializer) {
   localApi = localApi || {}
   remoteApi = remoteApi || {}
 
-  var perms = Permissions()
+  console.log('LOCAL_API', localApi)
+
+  //pass the manifest to the permissions so that it can know
+  //what something should be.
+  var perms = Permissions(localApi)
 
   return function (local) {
     local = local || {}
@@ -56,8 +60,10 @@ module.exports = function (remoteApi, localApi, serializer) {
         },
         request: function (opts, cb) {
           var name = opts.name
-          var err = perms.test(name)
+
+          var err = perms.pre(name)
           if(err) return cb(err)
+
           var args = opts.args
           if(has('sync', name)) {
             var value, err
@@ -87,33 +93,36 @@ module.exports = function (remoteApi, localApi, serializer) {
             var name = data.name
             var type = data.type
 
+            //check that this really is part of the local api.
+
             stream.read = null
 
-            var err = perms.test(name)
-            if(err) return stream.write(null, err)
+            //HANG ON, type should come from the manifest,
+            //*not* from what the client sends.
+            var err = perms.pre(name, data.args)
 
+            //how would this actually happen?
             if(end) return stream.write(null, end)
 
             if (!has(type, name))
-                return stream.destroy(new Error('no '+type+':'+name))
+                err = new Error('no '+type+':'+name)
 
             if(type === 'source') {
               var source, sink = pullWeird.sink(stream)
-              try {
-                source = get(name).apply(emitter, data.args)
-              } catch (err) {
-                return sink(pull.error(err))
-              }
-              sink(source)
+              if(!err)
+                try { source = get(name).apply(emitter, data.args) }
+                catch (_err) { err = _err }
+              sink(err ? pull.error(err) : source)
             }
             else if (type == 'sink') {
               var sink, source = pullWeird.source(stream)
-              try {
-                sink = get(name).apply(emitter, data.args)
-              } catch (err) {
-                return pullWeird.sink(stream)(pull.error(err))
-              }
-              sink(source)
+              if(!err)
+                try { sink = get(name).apply(emitter, data.args) }
+                catch (_err) { err = _err }
+                //return pullWeird.sink(stream)(pull.error(err))
+
+              if(err) source(err, function () {})
+              else sink(source)
             }
             else if (type == 'duplex') {
               var s1 = pullWeird(stream), s2
@@ -229,7 +238,11 @@ module.exports = function (remoteApi, localApi, serializer) {
         return
       var args = [].slice.call(arguments)
       if(args.length == 0) return
-      ps.message(args)
+
+      var err = perms.pre(['emit'], args)
+      if(!err) ps.message(args)
+      else     throw err
+
       return emitter
     }
 
