@@ -239,9 +239,12 @@ module.exports = function (remoteApi, localApi, serializer) {
       var args = [].slice.call(arguments)
       if(args.length == 0) return
 
-      var err = perms.pre(['emit'], args)
-      if(!err) ps.message(args)
-      else     throw err
+// oops, this was actually a breaking change!
+//      var err = perms.pre(['emit'], args)
+//      if(!err) ps.message(args)
+//      else     throw err
+
+      ps.message(args)
 
       return emitter
     }
