@@ -183,10 +183,15 @@ module.exports = function (remoteApi, localApi, serializer) {
             var cb = isFunction (args[args.length - 1])
                    ? args.pop() : noop
 
+            if (!ps)
+              return setImmediate(cb, new Error('stream is closed'))
             ps.request({name: name, args: args}, cb)
           }
         : 'source' === type ?
           function () {
+            if (!ps)
+              return pull.error(new Error('stream is closed'))
+
             var args = [].slice.call(arguments)
             var ws = ps.stream()
             var s = pullWeird.source(ws)
@@ -195,6 +200,9 @@ module.exports = function (remoteApi, localApi, serializer) {
           }
         : 'sink' === type ?
           function () {
+            if (!ps)
+              return pull.drain()
+
             var args = [].slice.call(arguments)
             var cb = isFunction (last(args)) ? args.pop() : noop
             var ws = ps.stream()
@@ -206,6 +214,11 @@ module.exports = function (remoteApi, localApi, serializer) {
           function () {
             var args = [].slice.call(arguments)
             var cb = isFunction (last(args)) ? args.pop() : noop
+
+            if (!ps) {
+              setImmediate(cb, new Error('stream is closed'))
+              return { source: pull.error(new Error('stream is closed')), sink: pull.drain() }
+            }
 
             var ws = ps.stream()
             var s = pullWeird(ws, cb)
@@ -277,6 +290,8 @@ module.exports = function (remoteApi, localApi, serializer) {
 
     emitter.closed = false
     emitter.close = function (cb) {
+      if (!ps)
+        return setImmediate(cb)
       ps.close(function (err) {
         if(!emitter.closed) {
           emitter.closed = true
