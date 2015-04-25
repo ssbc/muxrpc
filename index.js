@@ -27,6 +27,8 @@ function getPath(obj, path) {
   return obj
 }
 
+var abortSink = pull.Sink(function (read) { read(true) })
+
 module.exports = function (remoteApi, localApi, serializer) {
   localApi = localApi || {}
   remoteApi = remoteApi || {}
@@ -201,7 +203,7 @@ module.exports = function (remoteApi, localApi, serializer) {
         : 'sink' === type ?
           function () {
             if (!ps)
-              return pull.drain()
+              return abortSink()
 
             var args = [].slice.call(arguments)
             var cb = isFunction (last(args)) ? args.pop() : noop
@@ -217,7 +219,7 @@ module.exports = function (remoteApi, localApi, serializer) {
 
             if (!ps) {
               setImmediate(cb, new Error('stream is closed'))
-              return { source: pull.error(new Error('stream is closed')), sink: pull.drain() }
+              return { source: pull.error(new Error('stream is closed')), sink: abortSink() }
             }
 
             var ws = ps.stream()
