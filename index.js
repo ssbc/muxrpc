@@ -186,7 +186,7 @@ module.exports = function (remoteApi, localApi, serializer) {
                    ? args.pop() : noop
 
             if (!ps)
-              return setImmediate(cb, new Error('stream is closed'))
+              return cb(new Error('stream is closed'))
             ps.request({name: name, args: args}, cb)
           }
         : 'source' === type ?
@@ -218,7 +218,7 @@ module.exports = function (remoteApi, localApi, serializer) {
             var cb = isFunction (last(args)) ? args.pop() : noop
 
             if (!ps) {
-              setImmediate(cb, new Error('stream is closed'))
+              cb(new Error('stream is closed'))
               return { source: pull.error(new Error('stream is closed')), sink: abortSink() }
             }
 
@@ -293,7 +293,7 @@ module.exports = function (remoteApi, localApi, serializer) {
     emitter.closed = false
     emitter.close = function (cb) {
       if (!ps)
-        return setImmediate(cb)
+        return (cb && cb())
       ps.close(function (err) {
         if(!emitter.closed) {
           emitter.closed = true
