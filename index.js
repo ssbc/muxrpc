@@ -43,6 +43,7 @@ module.exports = function (remoteApi, localApi, serializer) {
     local = local || {}
 
     var emitter = new EventEmitter ()
+    emitter._logging = false
 
     function has(type, name) {
       return type === getPath(localApi, name) && isFunction(get(name))
@@ -187,6 +188,14 @@ module.exports = function (remoteApi, localApi, serializer) {
 
             if (!ps)
               return cb(new Error('stream is closed'))
+            if (emitter._logging) {
+              var ts = Date.now()
+              var _cb = cb
+              cb = function (err, res) {
+                console.debug(name.join('.'), Date.now() - ts, 'ms')
+                _cb(err, res)
+              }
+            }
             ps.request({name: name, args: args}, cb)
           }
         : 'source' === type ?
