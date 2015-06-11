@@ -33,8 +33,6 @@ module.exports = function (remoteApi, localApi, serializer) {
   localApi = localApi || {}
   remoteApi = remoteApi || {}
 
-  console.log('LOCAL_API', localApi)
-
   //pass the manifest to the permissions so that it can know
   //what something should be.
   var perms = Permissions(localApi)
@@ -165,7 +163,6 @@ module.exports = function (remoteApi, localApi, serializer) {
     //we get the pull-stream's internal buffer
     //so all operations are queued for free!
     var ws = goodbye(pullWeird(ps, function (err) {
-      closed()
       if(_cb) _cb(err)
     }))
 
@@ -284,7 +281,7 @@ module.exports = function (remoteApi, localApi, serializer) {
 
       once = true
       var stream = (serializer) ? serializer(ws) : ws
-      stream.close = ps.close
+      stream.close = ps.close.bind(ps)
       return stream
     }
 
