@@ -27,7 +27,7 @@ function getPath(obj, path) {
   return obj
 }
 
-var abortSink = pull.Sink(function (read) { read(true) })
+var abortSink = pull.Sink(function (read) { read(true, function () {}) })
 
 module.exports = function (remoteApi, localApi, serializer) {
   localApi = localApi || {}
