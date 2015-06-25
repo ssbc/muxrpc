@@ -20,12 +20,14 @@ var client = {
   suchstreamwow: 'duplex'
 }
 
+module.exports = function (codec) {
+
 tape('outer stream ends after close', function (t) {
 
   t.plan(4)
 
-  var A = mux(client, null) ()
-  var B = mux(null, client) ({
+  var A = mux(client, null, codec) ()
+  var B = mux(null, client, codec) ({
     hello: function (a, cb) {
       delay(cb)(null, 'hello, '+a)
     },
@@ -65,8 +67,8 @@ tape('outer stream ends after close', function (t) {
 tape('close after uniplex streams end', function (t) {
   t.plan(6)
 
-  var A = mux(client, null) ()
-  var B = mux(null, client) ({
+  var A = mux(client, null, codec) ()
+  var B = mux(null, client, codec) ({
     stuff: function () {
       t.ok(true)
       return pull.values([1, 2, 3, 4, 5])
@@ -104,8 +106,8 @@ tape('close after uniplex streams end', function (t) {
 tape('close after uniplex streams end 2', function (t) {
   t.plan(4)
 
-  var A = mux(client, null) ()
-  var B = mux(null, client) ({
+  var A = mux(client, null, codec) ()
+  var B = mux(null, client, codec) ({
     things: function () {
       t.ok(true)
       return pull.collect(function (err, ary) {
@@ -136,8 +138,8 @@ tape('close after both sides of a duplex stream ends', function (t) {
 
   t.plan(6)
 
-  var A = mux(client, null) ()
-  var B = mux(null, client) ({
+  var A = mux(client, null, codec) ()
+  var B = mux(null, client, codec) ({
     echo: function () {
       return pull.through(console.log, function () {
         t.ok(true)
@@ -195,7 +197,7 @@ tape('closed is emitted when stream disconnects', function (t) {
 
 tape('closed is emitted with error when stream errors', function (t) {
   t.plan(2)
-  var A = mux(client, null) ()
+  var A = mux(client, null, codec) ()
   A.on('closed', function (err) {
     t.notOk(err)
   })
@@ -208,7 +210,7 @@ tape('closed is emitted with error when stream errors', function (t) {
 
 tape('close and reopen', function (t) {
 
-  var A = mux(client, null) ()
+  var A = mux(client, null, codec) ()
   var as = A.createStream()
   A.on('closed', function () {
     console.log('closed?')
@@ -217,3 +219,8 @@ tape('close and reopen', function (t) {
   })
   as.close(function () {})
 })
+
+}
+
+if(!module.parent)
+  module.exports(function (e) { return e })

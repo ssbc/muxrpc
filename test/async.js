@@ -382,4 +382,4 @@ module.exports = function(serializer, buffers) {
 
 //see ./jsonb.js for tests with serialization.
 if(!module.parent)
-  module.exports();
+  module.exports(function (e) { return e });
