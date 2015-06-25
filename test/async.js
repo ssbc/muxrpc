@@ -3,7 +3,18 @@ var pull = require('pull-stream')
 var pushable = require('pull-pushable')
 var mux = require('../')
 
-module.exports = function(serializer) {
+module.exports = function(serializer, buffers) {
+
+  var b = buffers
+  ? function (b) {
+    return (
+        Buffer.isBuffer(b)
+      ? {type: 'Buffer', data: [].slice.call(b) }
+      : b
+    )
+  }
+  : function (b) { return b }
+
   var client = {
     hello  : 'async',
     goodbye: 'async',
@@ -36,7 +47,8 @@ module.exports = function(serializer) {
       var buf = new Buffer([0, 1, 2, 3, 4])
       A.goodbye(buf, function (err, buf2) {
         if (err) throw err
-        t.deepEqual(buf2, buf)
+        console.log(b(buf2), b(buf))
+        t.deepEqual(b(buf2), b(buf))
         t.end()
       })
     })
@@ -74,7 +86,8 @@ module.exports = function(serializer) {
 
       pull(A.bstuff(), pull.collect(function(err, ary) {
         if (err) throw err
-        t.deepEqual(ary, expected)
+        console.log(ary.map(b), expected.map(b))
+        t.deepEqual(ary.map(b), expected.map(b))
         t.end()
       }))
     }))
@@ -148,6 +161,7 @@ module.exports = function(serializer) {
         return {
           source: p,
           sink: pull.drain(function(value) {
+            console.log('************', nextValue, value)
             t.equal(nextValue, value)
             nextValue++
             if (nextValue == 5)
@@ -163,7 +177,6 @@ module.exports = function(serializer) {
     pull(dup, dup)
   })
 
-
   tape('async - error', function (t) {
     var A = mux(client, null) ()
 
@@ -176,7 +189,6 @@ module.exports = function(serializer) {
 
     s.sink(function (abort, cb) { cb(true) })
   })
-
 
   tape('async - error', function (t) {
     var A = mux(client, null) ()
@@ -295,7 +307,6 @@ module.exports = function(serializer) {
     }
   }
 
-
   tape('nested methods', function (t) {
     var A = mux(client2, null, serializer) ()
     var B = mux(null, client2, serializer) ({
@@ -320,7 +331,7 @@ module.exports = function(serializer) {
       var buf = new Buffer([0, 1, 2, 3, 4])
       A.salutations.goodbye(buf, function (err, buf2) {
         if (err) throw err
-        t.deepEqual(buf2, buf)
+        t.deepEqual( b(buf2), b(buf))
         t.end()
       })
     })
