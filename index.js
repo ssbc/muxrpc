@@ -6,6 +6,8 @@ var EventEmitter = require('events').EventEmitter
 var Permissions  = require('./permissions')
 var goodbye      = require('pull-goodbye')
 
+var PSC          = require('packet-stream-codec')
+
 function isFunction (f) {
   return 'function' === typeof f
 }
@@ -29,10 +31,12 @@ function getPath(obj, path) {
 
 var abortSink = pull.Sink(function (read) { read(true, function () {}) })
 
-module.exports = function (remoteApi, localApi, serializer) {
+module.exports = function (remoteApi, localApi, codec) {
   localApi = localApi || {}
   remoteApi = remoteApi || {}
 
+  if(!codec) codec = PSC
+  
   //pass the manifest to the permissions so that it can know
   //what something should be.
   var perms = Permissions(localApi)
@@ -280,7 +284,7 @@ module.exports = function (remoteApi, localApi, serializer) {
         throw new Error('only one stream allowed at a time')
 
       once = true
-      var stream = (serializer) ? serializer(ws) : ws
+      var stream = codec ? codec(ws) : ws
       stream.close = ps.close.bind(ps)
       return stream
     }
