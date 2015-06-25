@@ -8,8 +8,8 @@
     "url": "git://github.com/ssbc/muxrpc.git"
   },
   "dependencies": {
-    "packet-stream": "~1.0.0",
-    "pull-stream": "~2.26.0",
+    "packet-stream": "~2.0.0",
+    "pull-stream": "~2.27.0",
     "pull-goodbye": "~0.0.1"
   },
   "devDependencies": {
@@ -18,7 +18,10 @@
     "pull-serializer": "~0.2.0",
     "json-buffer": "~2.0.9",
     "cont": "~1.0.1",
-    "pull-pair": "~1.0.0"
+    "pull-pair": "~1.0.0",
+    "pull-stream": "~2.27.0",
+    "pull-abortable": "~4.1.0",
+    "packet-stream-codec": "~1.0.0"
   },
   "scripts": {
     "test": "set -e; for t in test/*.js; do node $t; done"
