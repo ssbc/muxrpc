@@ -29,6 +29,15 @@ function getPath(obj, path) {
   return obj
 }
 
+function isPerms (p) {
+  return (
+    p &&
+    isFunction(p.pre) &&
+    isFunction(p.test) &&
+    isFunction(p.post)
+  )
+}
+
 var abortSink = pull.Sink(function (read) { read(true, function () {}) })
 
 module.exports = function (remoteApi, localApi, codec) {
@@ -36,14 +45,18 @@ module.exports = function (remoteApi, localApi, codec) {
   remoteApi = remoteApi || {}
 
   if(!codec) codec = PSC
-  
+
   //pass the manifest to the permissions so that it can know
   //what something should be.
-  var perms = Permissions(localApi)
 
-  return function (local) {
+  return function (local, perms) {
     local = local || {}
 
+    if(isPerms(perms));
+    else if(isObject(perms))
+      perms = Permissions(perms)
+    else
+      perms = Permissions()
     var emitter = new EventEmitter ()
 
     function has(type, name) {
@@ -288,8 +301,6 @@ module.exports = function (remoteApi, localApi, codec) {
       stream.close = ps.close.bind(ps)
       return stream
     }
-
-    emitter.permissions = perms
 
     emitter.closed = false
     emitter.close = function (cb) {

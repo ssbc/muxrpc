@@ -3,6 +3,7 @@ var pull = require('pull-stream')
 var pushable = require('pull-pushable')
 var mux = require('../')
 var cont = require('cont')
+var Permissions = require('../permissions')
 
 var api = {
   login  : 'async',
@@ -35,6 +36,8 @@ function createServerAPI (store) {
 
   //this wraps a session.
 
+  var perms = Permissions({allow: ['login']})
+
   var session = {
     //implement your own auth function.
     //it should just set the allow and deny lists.
@@ -42,15 +45,15 @@ function createServerAPI (store) {
     login: function (opts, cb) {
       //allow read operations
       if(opts.name === 'user' && opts.pass === "password")
-        rpc.permissions({deny: ['put', 'del'], allow: null})
+        perms({deny: ['put', 'del'], allow: null})
 
       //allow write operations
       else if(opts.name === 'admin' && opts.pass === "admin") //whatelse?
-        rpc.permissions({deny: null, allow: null}) //allow everything
+        perms({deny: null, allow: null}) //allow everything
 
       //
       else if(opts.name === 'nested' && opts.pass === 'foofoo')
-        rpc.permissions({
+        perms({
           //read only access to nested methods
           allow: ['nested'],
           deny: [['nested', 'put'], ['nested', 'del']]
@@ -66,7 +69,7 @@ function createServerAPI (store) {
     },
     logout: function (cb) {
       name = 'nobody'
-      rpc.permissions({allow: ['login'], deny: null})
+      perms({allow: ['login'], deny: null})
       cb(null, {okay: true, user: name})
     },
     whoami: function (cb) {
@@ -94,7 +97,7 @@ function createServerAPI (store) {
 
   session.nested = session
 
-  return rpc = mux(null, api, id)(session).permissions({allow: ['login']})
+  return rpc = mux(null, api, id)(session, perms)
 }
 
 function createClientAPI() {

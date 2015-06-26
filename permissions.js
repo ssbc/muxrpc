@@ -46,34 +46,36 @@ create perms:
   }
 */
 
-module.exports = function () {
-  var whitelist = null
-  var blacklist = {}
+module.exports = function (opts) {
+  var allow = null
+  var deny = {}
 
   function perms (opts) {
     if(opts.allow) {
-      whitelist = {}
+      allow = {}
       opts.allow.forEach(function (path) {
-        u.set(whitelist, toArray(path), true)
+        u.set(allow, toArray(path), true)
       })
     }
-    else whitelist = null
+    else allow = null
 
     if(opts.deny)
       opts.deny.forEach(function (path) {
-        u.set(blacklist, toArray(path), true)
+        u.set(deny, toArray(path), true)
       })
-    else blacklist = {}
+    else deny = {}
 
     return this
   }
 
+  if(opts) perms(opts)
+
   perms.pre = function (name, args) {
     name = isArray(name) ? name : [name]
-    if(whitelist && !u.prefix(whitelist, name))
+    if(allow && !u.prefix(allow, name))
       return new Error('method:'+name + ' is not on whitelist')
 
-    if(blacklist && u.prefix(blacklist, name))
+    if(deny && u.prefix(deny, name))
       return new Error('method:'+name + ' is on blacklist')
   }
 
@@ -83,6 +85,10 @@ module.exports = function () {
 
   perms.test = function (name, args) {
     return perms.pre(name, args)
+  }
+
+  perms.get = function () {
+    return {allow: allow, deny: deny}
   }
 
   return perms
