@@ -9,7 +9,9 @@ module.exports = function(serializer, buffers) {
   ? function (b) {
     return (
         Buffer.isBuffer(b)
-      ? {type: 'Buffer', data: [].slice.call(b) }
+        //reserialize, to take into the account
+        //changes Buffer#toJSON between 0.10 and 0.12
+      ? JSON.parse(JSON.stringify(b))
       : b
     )
   }
