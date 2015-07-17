@@ -1,6 +1,6 @@
 var tape = require('tape')
 var pull = require('pull-stream')
-var pushable = require('pull-pushable')
+var Pushable = require('pull-pushable')
 var mux = require('../')
 
 module.exports = function(serializer) {
@@ -126,6 +126,104 @@ module.exports = function(serializer) {
       })
     })
   })
+
+  tape('wait for streams to end before closing', function (t) {
+
+    var pushable = Pushable()
+    var closed = false, n = 2, drained = []
+
+    var A = mux(client, null, serializer) ()
+    var B = mux(null, client, serializer) ({
+      stuff: function () { return pushable }
+    })
+
+    var s = A.createStream()
+    pull(s, B.createStream(), s)
+
+    pull(
+      A.stuff(),
+      pull.drain(function (data) {
+        drained.push(data)
+        t.notOk(closed)
+      }, function (err) {
+        next()
+      })
+    )
+
+    B.close(function (closed) {
+      closed = true
+      next()
+    })
+
+    function next () {
+      if(--n) return
+      t.deepEqual(drained, [1,2,3])
+      t.end()
+    }
+
+    pushable.push(1)
+    setTimeout(function () {
+      //this should have already gotten through,
+      //but should not have closed yet.
+      t.deepEqual(drained, [1])
+      pushable.push(2)
+      setTimeout(function () {
+        t.deepEqual(drained, [1, 2])
+        pushable.push(3)
+        setTimeout(function () {
+          t.deepEqual(drained, [1, 2, 3])
+          pushable.end()
+        })
+      })
+    })
+  })
+
+  tape('wait for streams to end before closing', function (t) {
+
+    var closed = false, n = 3, drained = []
+
+    var pushable = Pushable(function () {
+      next()
+    })
+    var A = mux(client, null, serializer) ()
+    var B = mux(null, client, serializer) ({
+      stuff: function () { return pushable }
+    })
+
+    var s = A.createStream()
+    pull(s, B.createStream(), s)
+
+    pull(
+      A.stuff(),
+      pull.drain(function (data) {
+        drained.push(data)
+        t.notOk(closed)
+      }, function (err) {
+        t.ok(err)
+        next()
+      })
+    )
+
+    function next () {
+      if(--n) return
+      t.deepEqual(drained, [1])
+      t.end()
+    }
+
+    pushable.push(1)
+    setTimeout(function () {
+      //this should have already gotten through,
+      //but should not have closed yet.
+      t.deepEqual(drained, [1])
+      B.close(true, function (closed) {
+        closed = true
+        next()
+      })
+
+      pushable.push(2)
+    })
+  })
+
 
 }
 
