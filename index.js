@@ -306,7 +306,7 @@ module.exports = function (remoteApi, localApi, codec) {
     emitter.close = function (err, cb) {
       if(isFunction(err))
         cb = err, err = false
-      if (!ps) return (cb && cb())
+      if(!ps) return (cb && cb())
       if(err) return ps.destroy(err), (cb && cb())
 
       ps.close(function (err) {
