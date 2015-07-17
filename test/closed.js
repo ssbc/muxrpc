@@ -178,7 +178,7 @@ module.exports = function(serializer) {
     })
   })
 
-  tape('wait for streams to end before closing', function (t) {
+  tape('destroy streams when close(immediate, cb) is used', function (t) {
 
     var closed = false, n = 3, drained = []
 
