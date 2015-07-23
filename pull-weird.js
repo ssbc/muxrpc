@@ -11,15 +11,16 @@ function once (fn) {
 }
 
 module.exports = function (weird, _done) {
-  var buffer = [], ended = false, waiting
+  var buffer = [], ended = false, waiting, abort
 
   var done = once(function (err, v) {
     _done && _done(err, v)
-
     // deallocate
     weird = null
     _done = null    
     waiting = null
+
+    if(abort) abort(err || true, function () {})
   })
 
   weird.read = function (data, end) {
@@ -46,6 +47,8 @@ module.exports = function (weird, _done) {
       else waiting = cb
     },
     sink  : function (read) {
+      if(ended) return read(ended, function () {}), abort = null
+      abort = read
       pull.drain(function (data) {
         //TODO: make this should only happen on a UNIPLEX stream.
         if(ended) return false
