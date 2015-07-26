@@ -53,6 +53,31 @@ pull(a.stuff(), pull.drain(console.log))
 // 5
 ```
 
+## Manifest
+
+like multilevel, a [manifest is required](https://github.com/juliangruber/multilevel#plugins)
+except it works a little differently, and since muxrpc works with any api,
+not assuming leveldb then you must write the manifest yourself.
+
+The manifest is simply an object mapping to strings, or nested objects.
+
+``` js
+{
+  foo: 'async',        //a function with a callback.
+  bar: 'sync',         //a function that returns a value
+                       //(note this is converted to an async function for the client)
+  allTheFoos: 'source' //a source pull-stream (aka, readable)
+  writeFoos: 'sink',   //a sink pull-stream (aka, writable)
+  fooPhone: 'duplex',  //a duplex pull-stream
+
+  //create nested objects like this:
+  bar: {
+    ...
+  }
+}
+
+```
+
 ## Permissions
 
 If you are exposing an api over a network connection,
