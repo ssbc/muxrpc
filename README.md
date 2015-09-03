@@ -10,6 +10,7 @@ combined rpc and multiplexing, with pull-streams.
 ``` js
 
 var MRPC = require('muxrpc')
+var pull = require('pull-stream')
 
 //we need a manifest of methods we wish to expose.
 var api = {
@@ -39,13 +40,13 @@ var b = server.createStream()
 
 pull(a, b, a) //pipe together
 
-a.hello('world', function (err, value) {
+client.hello('world', function (err, value) {
   if(err) throw err
   console.log(value)
   // hello, world!
 })
 
-pull(a.stuff(), pull.drain(console.log))
+pull(client.stuff(), pull.drain(console.log))
 // 1
 // 2
 // 3
