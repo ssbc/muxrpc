@@ -69,10 +69,11 @@ function uniplex (s, done) {
   })
 }
 
-module.exports.source = function (s, done) {
-  return uniplex(s, done).source
+module.exports.source = function (s/*, done*/) {
+  return uniplex(s/*, done*/).source
 }
 module.exports.sink = function (s, done) {
   return uniplex(s, done).sink
 }
 
+module.exports.duplex = module.exports

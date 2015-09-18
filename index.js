@@ -38,7 +38,11 @@ function isPerms (p) {
   )
 }
 
-var abortSink = pull.Sink(function (read) { read(true, function () {}) })
+var abortSink = function (err) {
+      return function (read) {
+        read(err || true, function () {})
+      }
+    }
 
 module.exports = function (remoteApi, localApi, codec) {
   localApi = localApi || {}
@@ -136,7 +140,6 @@ module.exports = function (remoteApi, localApi, codec) {
               if(!err)
                 try { sink = get(name).apply(emitter, data.args) }
                 catch (_err) { err = _err }
-                //return pullWeird.sink(stream)(pull.error(err))
 
               if(err) source(err, function () {})
               else sink(source)
@@ -191,72 +194,44 @@ module.exports = function (remoteApi, localApi, codec) {
       return ary[ary.length - 1]
     }
 
-    function createMethod(name, type) {
-      return (
-        'async' === type || 'sync' === type ?
-          function () {
-            var args = [].slice.call(arguments)
-            var cb = isFunction (args[args.length - 1])
-                   ? args.pop() : noop
+    function callMethod(name, type, args) {
+      var cb = isFunction (args[args.length - 1])
+             ? args.pop() : noop
+      if(!/^(async|sync|source|sink|duplex)$/.test(type))
+        throw new Error('unsupported type:' + JSON.stringify(type))
 
-            if (!ps)
-              return cb(new Error('stream is closed'))
-            ps.request({name: name, args: args}, cb)
-          }
-        : 'source' === type ?
-          function () {
-            if (!ps)
-              return pull.error(new Error('stream is closed'))
+      if(!ps) {
+        var err = new Error('stream is closed')
+        if ('async' === type || 'sync' === type) return cb(err)
+        else if('source' === type)               return pull.error(err)
+        else if('sink' === type)                 return abortSink(err)
+        else if('duplex' === type) {
+          cb(err)
+          return { source: pull.error(err), sink: abortSink(err) }
+        }
+      }
 
-            var args = [].slice.call(arguments)
-            var ws = ps.stream()
-            var s = pullWeird.source(ws)
-            ws.write({name: name, args: args, type: 'source'})
-            return s
-          }
-        : 'sink' === type ?
-          function () {
-            if (!ps)
-              return abortSink()
+      if('async' === type || 'sync' === type)
+          return ps.request({name: name, args: args}, cb)
 
-            var args = [].slice.call(arguments)
-            var cb = isFunction (last(args)) ? args.pop() : noop
-            var ws = ps.stream()
-            var s = pullWeird.sink(ws, cb)
-            ws.write({name: name, args: args, type: 'sink'})
-            return s
-          }
-        : 'duplex' === type ?
-          function () {
-            var args = [].slice.call(arguments)
-            var cb = isFunction (last(args)) ? args.pop() : noop
-
-            if (!ps) {
-              cb(new Error('stream is closed'))
-              return { source: pull.error(new Error('stream is closed')), sink: abortSink() }
-            }
-
-            var ws = ps.stream()
-            var s = pullWeird(ws, cb)
-            ws.write({name: name, args: args, type: 'duplex'})
-            return s
-          }
-        : (function () {
-            throw new Error('unsupported type:' + JSON.stringify(type))
-          })()
-      )
+      var ws = ps.stream()
+      var s
+      var s = pullWeird[type](ws, cb)
+      ws.write({name: name, args: args, type: type})
+      return s
     }
 
     //add all the api methods to emitter recursively
     ;(function recurse (obj, api, path) {
-      for(var name in api) {
-        var type = api[name]
+      for(var name in api) (function (name, type) {
         var _path = path ? path.concat(name) : [name]
         obj[name] =
             isObject(type)
           ? recurse({}, type, _path)
-          : createMethod(_path, type)
-      }
+          : function () {
+              return callMethod(_path, type, [].slice.call(arguments))
+            }
+      })(name, api[name])
       return obj
     })(emitter, remoteApi)
 
