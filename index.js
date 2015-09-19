@@ -48,6 +48,14 @@ function abortDuplex (err) {
   return {source: pull.error(err), sink: abortSink(err)}
 }
 
+function isSource    (t) { return 'source' === t }
+function isSink      (t) { return 'sink'   === t }
+function isDuplex    (t) { return 'duplex' === t }
+function isSync      (t) { return 'sync'  === t }
+function isAsync     (t) { return 'async'  === t }
+function isRequest   (t) { return isSync(t) || isAsync(t) }
+function isStream    (t) { return isSource(t) || isSink(t) || isDuplex(t) }
+
 module.exports = function (remoteApi, localApi, codec) {
   localApi = localApi || {}
   remoteApi = remoteApi || {}
@@ -84,34 +92,27 @@ module.exports = function (remoteApi, localApi, codec) {
             emitter._emit.apply(emitter, msg)
         },
         request: function (opts, cb) {
-          var name = opts.name
+          var name = opts.name, args = opts.args
+          var inCB = false, async = false, value
 
           var err = perms.pre(name)
           if(err) return cb(err)
 
-          var args = opts.args
-          if(has('sync', name)) {
-            var value, err
-            try {
-              value = get(name).apply(emitter, args)
-            } catch (_err) {
-              err = _err
-            }
-            return cb(err, value)
-          }
-          else if(!has('async', name))
+          if(async = has('async', name))
+            args.push(function (err, value) {
+              inCB = true; cb(err, value)
+            })
+          else if(!has('sync', name))
             return cb(new Error('method not supported:'+name))
-          var inCB = false
-          args.push(function (err, value) {
-            inCB = true
-            cb(err, value)
-          })
-          //packet stream already has a thing to check cb fires only once.
-          try { get(name).apply(emitter, args) }
-          catch (err) {
+
+          try {
+            value = get(name).apply(emitter, args)
+          } catch (err) {
             if(inCB) throw err
-            cb(err)
+            return cb(err)
           }
+
+          if(!async) cb(null, value)
         },
         stream: function (stream) {
           stream.read = function (data, end) {
@@ -122,7 +123,7 @@ module.exports = function (remoteApi, localApi, codec) {
 
             stream.read = null
 
-            if(!/^(source|sink|duplex)$/.test(type))
+            if(!isStream(type))
               return stream.write(null, new Error('unsupported stream type:'+type))
 
             //how would this actually happen?
@@ -143,11 +144,11 @@ module.exports = function (remoteApi, localApi, codec) {
               {source: 'sink', sink: 'source'}[type] || 'duplex'
             ](stream)
 
-            if('source' === type)
+            if(isSource(type))
               _stream(err ? pull.error(err) : value)
-            else if ('sink' === type)
+            else if (isSink(type))
               (err ? abortSink(err) : value)(_stream)
-            else if ('duplex' === type)
+            else if (isDuplex(type))
               pull(_stream, err ? abortDuplex(err) : value, _stream)
           }
         },
@@ -190,22 +191,21 @@ module.exports = function (remoteApi, localApi, codec) {
     function callMethod(name, type, args) {
       var cb = isFunction (args[args.length - 1])
              ? args.pop() : noop
-      if(!/^(async|sync|source|sink|duplex)$/.test(type))
+      if(!(isRequest(type) || isStream(type)))
         throw new Error('unsupported type:' + JSON.stringify(type))
 
       if(!ps) {
         var err = new Error('stream is closed')
-        if ('async' === type || 'sync' === type) return cb(err)
-        else if('source' === type)               return pull.error(err)
-        else if('sink' === type)                 return abortSink(err)
-        else if('duplex' === type) {
-          cb(err)
-          return { source: pull.error(err), sink: abortSink(err) }
-        }
+        return (
+            isRequest(type) ? cb(err)
+          : isSource(type)  ? pull.error(err)
+          : isSink(type)    ? abortSink(err)
+          :                   cb(err), abortDuplex(err)
+        )
       }
 
-      if('async' === type || 'sync' === type)
-          return ps.request({name: name, args: args}, cb)
+      if(isRequest(type))
+        return ps.request({name: name, args: args}, cb)
 
       var ws = ps.stream(), s = pullWeird[type](ws, cb)
       ws.write({name: name, args: args, type: type})
