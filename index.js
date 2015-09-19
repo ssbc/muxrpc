@@ -38,11 +38,15 @@ function isPerms (p) {
   )
 }
 
-var abortSink = function (err) {
-      return function (read) {
-        read(err || true, function () {})
-      }
-    }
+function abortSink (err) {
+  return function (read) {
+    read(err || true, function () {})
+  }
+}
+
+function abortDuplex (err) {
+  return {source: pull.error(err), sink: abortSink(err)}
+}
 
 module.exports = function (remoteApi, localApi, codec) {
   localApi = localApi || {}
@@ -113,49 +117,38 @@ module.exports = function (remoteApi, localApi, codec) {
           stream.read = function (data, end) {
             var name = data.name
             var type = data.type
-
+            var value
             //check that this really is part of the local api.
 
             stream.read = null
+
+            if(!/^(source|sink|duplex)$/.test(type))
+              return stream.write(null, new Error('unsupported stream type:'+type))
+
+            //how would this actually happen?
+            if(end) return stream.write(null, end)
 
             //HANG ON, type should come from the manifest,
             //*not* from what the client sends.
             var err = perms.pre(name, data.args)
 
-            //how would this actually happen?
-            if(end) return stream.write(null, end)
-
-            if (!has(type, name))
+            if (!err && !has(type, name))
                 err = new Error('no '+type+':'+name)
-
-            if(type === 'source') {
-              var source, sink = pullWeird.sink(stream)
-              if(!err)
-                try { source = get(name).apply(emitter, data.args) }
-                catch (_err) { err = _err }
-              sink(err ? pull.error(err) : source)
-            }
-            else if (type == 'sink') {
-              var sink, source = pullWeird.source(stream)
-              if(!err)
-                try { sink = get(name).apply(emitter, data.args) }
-                catch (_err) { err = _err }
-
-              if(err) source(err, function () {})
-              else sink(source)
-            }
-            else if (type == 'duplex') {
-              var s1 = pullWeird(stream), s2
-              try {
-                s2 = get(name).apply(emitter, data.args)
-              } catch (err) {
-                return s1.sink(pull.error(err))
-              }
-              pull(s1, s2, s1)
-            }
             else {
-              return stream.write(null, new Error('unsupported stream type:'+type))
+              try { value = get(name).apply(emitter, data.args) }
+              catch (_err) { err = _err }
             }
+
+            var _stream = pullWeird[
+              {source: 'sink', sink: 'source'}[type] || 'duplex'
+            ](stream)
+
+            if('source' === type)
+              _stream(err ? pull.error(err) : value)
+            else if ('sink' === type)
+              (err ? abortSink(err) : value)(_stream)
+            else if ('duplex' === type)
+              pull(_stream, err ? abortDuplex(err) : value, _stream)
           }
         },
 
@@ -214,9 +207,7 @@ module.exports = function (remoteApi, localApi, codec) {
       if('async' === type || 'sync' === type)
           return ps.request({name: name, args: args}, cb)
 
-      var ws = ps.stream()
-      var s
-      var s = pullWeird[type](ws, cb)
+      var ws = ps.stream(), s = pullWeird[type](ws, cb)
       ws.write({name: name, args: args, type: type})
       return s
     }
