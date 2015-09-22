@@ -161,13 +161,26 @@ module.exports = function (codec) {
       })
     }
 
-    var ps = createPacketStream(), _cb
+    var ps, ws, _cb, once = false
+
+    function initStream () {
+
+      ps = createPacketStream()//, _cb
+      ws = goodbye(pullWeird(ps, function (err) {
+        if(_cb) _cb(err)
+      }))
+
+      ws = codec ? codec(ws) : ws
+      ws.close = ps.close.bind(ps)
+
+      return ws
+    }
+
     //if we create the stream immediately,
     //we get the pull-stream's internal buffer
     //so all operations are queued for free!
-    var ws = goodbye(pullWeird(ps, function (err) {
-      if(_cb) _cb(err)
-    }))
+    initStream()
+
 
     function noop (err) {
       if (err) throw err
@@ -251,25 +264,24 @@ module.exports = function (codec) {
     //another when the previous has not yet ended
     //or abort the previous one, and create a new one?
 
+    //there is very little test coverage for this,
+    //and I don't think we have ever used this feature.
+    //should remove if this does not break anything.
+
     var once = false
 
     emitter.createStream = function (cb) {
       _cb = cb
       if(!ps || ps.ended) {
-        ps = createPacketStream()
-        emitter.closed = false
-        ws = goodbye(pullWeird(ps, function (err) {
-          closed(err)
-        }))
+        initStream()
         once = false
       }
       else if(once)
         throw new Error('only one stream allowed at a time')
 
       once = true
-      var stream = codec ? codec(ws) : ws
-      stream.close = ps.close.bind(ps)
-      return stream
+
+      return ws
     }
 
     emitter.closed = false
