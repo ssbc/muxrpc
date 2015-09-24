@@ -87,6 +87,8 @@ module.exports = function (codec) {
       return getPath(local, name)
     }
 
+    var ps, ws, _cb, once = false
+
     function createPacketStream () {
 
       function localCall(name, args) {
@@ -101,6 +103,21 @@ module.exports = function (codec) {
 
         return get(name).apply(emitter, args)
       }
+
+
+      function closed (err) {
+        // deallocate
+        ps = null
+        if(ws) {
+          if(ws.closed) return
+          ws.closed = true
+          if(ws.onClose) ws.onClose(err)
+        }
+        // deallocate
+        local = null
+        ws = null
+      }
+     
 
       return PacketStream({
         message: function (msg) {
@@ -174,8 +191,6 @@ module.exports = function (codec) {
       })
     }
 
-    var ps, ws, _cb, once = false
-
     function initStream () {
 
       ps = createPacketStream()//, _cb
@@ -185,7 +200,7 @@ module.exports = function (codec) {
 
       ws = codec ? codec(ws) : ws
       ws.close = ps.close.bind(ps)
-
+      ws.closed = false
       return ws
     }
 
@@ -256,21 +271,6 @@ module.exports = function (codec) {
       return emitter
     }
 
-    function closed (err) {
-      // deallocate
-      ps = null
-      ws = null
-
-      if(emitter && !emitter.closed) {
-        emitter.closed = true
-        emitter._emit('closed')
-        if(_cb) {
-          var cb = _cb; _cb = null; cb(err)
-        }
-        else if(err) emitter.emit('error', err)
-      }
-    }
-
     //this is the stream to the remote server.
     //it only makes sense to have one of these.
     //either throw an error if the user creates
@@ -291,6 +291,16 @@ module.exports = function (codec) {
       }
       else if(once)
         throw new Error('only one stream allowed at a time')
+
+      ws.onClose = function (err) {
+        if(emitter.closed) return
+        emitter.closed = true
+        emitter._emit('closed')
+        if(_cb) {
+          var cb = _cb; _cb = null; cb(err)
+        }
+        else if(err) emitter.emit('error', err)
+      }
 
       once = true
 
