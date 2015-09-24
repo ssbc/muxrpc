@@ -199,7 +199,17 @@ module.exports = function (codec) {
       }))
 
       ws = codec ? codec(ws) : ws
-      ws.close = ps.close.bind(ps)
+//      ws.close = ps.close.bind(ps)
+
+      ws.close = function (err, cb) {
+        if(isFunction(err))
+          cb = err, err = false
+        if(!ps) return (cb && cb())
+        if(err) return ps.destroy(err), (cb && cb())
+
+        ps.close(cb)
+        return this
+      }
       ws.closed = false
       return ws
     }
@@ -303,31 +313,20 @@ module.exports = function (codec) {
       }
 
       once = true
-
+      emitter.close = ws.close
+      ws.closed = false
       return ws
     }
 
     emitter.closed = false
+
     emitter.close = function (err, cb) {
       if(isFunction(err))
         cb = err, err = false
       if(!ps) return (cb && cb())
       if(err) return ps.destroy(err), (cb && cb())
 
-      ps.close(function (err) {
-        if(!emitter.closed) {
-          emitter.closed = true
-          emitter._emit('closed')
-        }
-
-        // deallocate
-        local = null
-        ps = null
-        ws = null
-        emitter = null
-
-        cb && cb(err)
-      })
+      ps.close(cb)
       return this
     }
 
