@@ -89,6 +89,19 @@ module.exports = function (codec) {
 
     function createPacketStream () {
 
+      function localCall(name, args) {
+
+        //emitter is called in this context,
+        //so that the callee has a handle on who is calling.
+        //this is used in secret-stack/sbot... Although,
+        //I suspect just to track the id of the caller?
+        //do they ever make requests back from that api?
+        //(I have a feeling they don't...
+        // so it may be possible to change this)
+
+        return get(name).apply(emitter, args)
+      }
+
       return PacketStream({
         message: function (msg) {
           if(isString(msg)) return
@@ -110,7 +123,7 @@ module.exports = function (codec) {
             return cb(new Error('method not supported:'+name))
 
           try {
-            value = get(name).apply(emitter, args)
+            value = localCall(name, args)
           } catch (err) {
             if(inCB) throw err
             return cb(err)
@@ -140,7 +153,7 @@ module.exports = function (codec) {
             if (!err && !has(type, name))
                 err = new Error('no '+type+':'+name)
             else {
-              try { value = get(name).apply(emitter, data.args) }
+              try { value = localCall(name, data.args) }
               catch (_err) { err = _err }
             }
 
