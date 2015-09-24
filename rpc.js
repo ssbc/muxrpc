@@ -89,6 +89,14 @@ module.exports = function (codec) {
 
     var ps, ws, _cb, once = false
 
+
+    function closePS (cb) {
+      ps.close(function (err) {
+        if(cb) cb(err)
+        else if(err) throw err
+      })
+    }
+
     function createPacketStream () {
 
       function localCall(name, args) {
@@ -117,7 +125,6 @@ module.exports = function (codec) {
         local = null
         ws = null
       }
-     
 
       return PacketStream({
         message: function (msg) {
@@ -199,7 +206,6 @@ module.exports = function (codec) {
       }))
 
       ws = codec ? codec(ws) : ws
-//      ws.close = ps.close.bind(ps)
 
       ws.close = function (err, cb) {
         if(isFunction(err))
@@ -207,7 +213,8 @@ module.exports = function (codec) {
         if(!ps) return (cb && cb())
         if(err) return ps.destroy(err), (cb && cb())
 
-        ps.close(cb)
+        closePS(cb)
+
         return this
       }
       ws.closed = false
@@ -326,7 +333,7 @@ module.exports = function (codec) {
       if(!ps) return (cb && cb())
       if(err) return ps.destroy(err), (cb && cb())
 
-      ps.close(cb)
+      closePS(cb)
       return this
     }
 
