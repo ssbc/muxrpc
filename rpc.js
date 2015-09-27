@@ -100,7 +100,6 @@ module.exports = function (codec) {
     function createPacketStream () {
 
       function localCall(name, args) {
-
         //emitter is called in this context,
         //so that the callee has a handle on who is calling.
         //this is used in secret-stack/sbot... Although,
@@ -108,7 +107,8 @@ module.exports = function (codec) {
         //do they ever make requests back from that api?
         //(I have a feeling they don't...
         // so it may be possible to change this)
-
+        if(name === 'emit')
+          return emitter._emit.apply(emitter, args)
         return get(name).apply(emitter, args)
       }
 
@@ -130,7 +130,7 @@ module.exports = function (codec) {
         message: function (msg) {
           if(isString(msg)) return
           if(msg.length > 0 && isString(msg[0]))
-            emitter._emit.apply(emitter, msg)
+            localCall('emit', msg)
         },
         request: function (opts, cb) {
           var name = opts.name, args = opts.args
