@@ -1,4 +1,6 @@
 
+var pull = require('pull-stream')
+
 function isString (s) {
   return 'string' === typeof s
 }
@@ -34,7 +36,7 @@ exports.set = function (obj, path, value) {
 }
 
 exports.get = function (obj, path) {
-  if(isString(obj[path])) return obj[path]
+  if(isString(path)) return obj[path]
   var value
   for(var i = 0; i < path.length; i++) {
     var k = path[i]
@@ -93,4 +95,50 @@ var mount = exports.mount = function (obj, path, _obj) {
 }
 var unmount = exports.unmount = function (obj, path) {
   return rmPath(obj, path)
+}
+
+function isSource    (t) { return 'source' === t }
+function isSink      (t) { return 'sink'   === t }
+function isDuplex    (t) { return 'duplex' === t }
+function isSync      (t) { return 'sync'  === t }
+function isAsync     (t) { return 'async'  === t }
+function isRequest   (t) { return isSync(t) || isAsync(t) }
+function isStream    (t) { return isSource(t) || isSink(t) || isDuplex(t) }
+
+function abortSink (err) {
+  return function (read) {
+    read(err || true, function () {})
+  }
+}
+
+function abortDuplex (err) {
+  return {source: pull.error(err), sink: abortSink(err)}
+}
+
+exports.errorAsStream = function (type, err) {
+  return (
+      isSource(type)  ? pull.error(err)
+    : isSink(type)    ? abortSink(err)
+    :                   abortDuplex(err)
+  )
+}
+
+
+exports.errorAsStreamOrCb = function (type, err, cb) {
+  console.log('EaS', type, err, err.stack)
+  return (
+      isRequest(type) ? cb(err)
+    : isSource(type)  ? pull.error(err)
+    : isSink(type)    ? abortSink(err)
+    :                   cb(err), abortDuplex(err)
+  )
+}
+
+exports.pipeToStream = function (type, _stream, stream) {
+  if(isSource(type))
+    _stream(stream)
+  else if (isSink(type))
+    stream(_stream)
+  else if (isDuplex(type))
+    pull(_stream, stream, _stream)
 }

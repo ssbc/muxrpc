@@ -1,11 +1,13 @@
 var u            = require('./util')
-var pull         = require('pull-stream')
-var pullWeird    = require('./pull-weird')
-var PacketStream = require('packet-stream')
 var EventEmitter = require('events').EventEmitter
 var Permissions  = require('./permissions')
-var goodbye      = require('pull-goodbye')
 
+var goodbye      = require('pull-goodbye')
+var pull         = require('pull-stream')
+var pullWeird    = require('./pull-weird')
+
+
+var createPacketStream = require('./stream')
 
 function isFunction (f) {
   return 'function' === typeof f
@@ -32,16 +34,6 @@ function isPerms (p) {
   )
 }
 
-function abortSink (err) {
-  return function (read) {
-    read(err || true, function () {})
-  }
-}
-
-function abortDuplex (err) {
-  return {source: pull.error(err), sink: abortSink(err)}
-}
-
 function isSource    (t) { return 'source' === t }
 function isSink      (t) { return 'sink'   === t }
 function isDuplex    (t) { return 'duplex' === t }
@@ -49,6 +41,11 @@ function isSync      (t) { return 'sync'  === t }
 function isAsync     (t) { return 'async'  === t }
 function isRequest   (t) { return isSync(t) || isAsync(t) }
 function isStream    (t) { return isSource(t) || isSink(t) || isDuplex(t) }
+
+function noop (err) {
+  if (err) throw err
+}
+
 
 module.exports = function (codec) {
 
@@ -97,110 +94,43 @@ module.exports = function (codec) {
       })
     }
 
-    function createPacketStream () {
+    function localCall(name, args, type) {
+      var err = perms.pre(name)
+      if(err) throw err
 
-      function localCall(name, args) {
-        //emitter is called in this context,
-        //so that the callee has a handle on who is calling.
-        //this is used in secret-stack/sbot... Although,
-        //I suspect just to track the id of the caller?
-        //do they ever make requests back from that api?
-        //(I have a feeling they don't...
-        // so it may be possible to change this)
-        if(name === 'emit')
-          return emitter._emit.apply(emitter, args)
-        return get(name).apply(emitter, args)
-      }
+      if(name === 'emit')
+        return emitter._emit.apply(emitter, args)
 
-
-      function closed (err) {
-        // deallocate
-        ps = null
-        if(ws) {
-          if(ws.closed) return
-          ws.closed = true
-          if(ws.onClose) ws.onClose(err)
+      if(type === 'async')
+        if(has('sync', name)) {
+          var cb = args.pop(), value
+          try { value = get(name).apply(emitter, args) }
+          catch (err) { return cb(err) }
+          return cb(null, value)
         }
-        // deallocate
-        local = null
-        ws = null
-      }
 
-      return PacketStream({
-        message: function (msg) {
-          if(isString(msg)) return
-          if(msg.length > 0 && isString(msg[0]))
-            localCall('emit', msg)
-        },
-        request: function (opts, cb) {
-          var name = opts.name, args = opts.args
-          var inCB = false, async = false, value
-
-          var err = perms.pre(name)
-          if(err) return cb(err)
-
-          if(async = has('async', name))
-            args.push(function (err, value) {
-              inCB = true; cb(err, value)
-            })
-          else if(!has('sync', name))
-            return cb(new Error('method not supported:'+name))
-
-          try {
-            value = localCall(name, args)
-          } catch (err) {
-            if(inCB) throw err
-            return cb(err)
-          }
-
-          if(!async) cb(null, value)
-        },
-        stream: function (stream) {
-          stream.read = function (data, end) {
-            var name = data.name
-            var type = data.type
-            var value
-            //check that this really is part of the local api.
-
-            stream.read = null
-
-            if(!isStream(type))
-              return stream.write(null, new Error('unsupported stream type:'+type))
-
-            //how would this actually happen?
-            if(end) return stream.write(null, end)
-
-            //HANG ON, type should come from the manifest,
-            //*not* from what the client sends.
-            var err = perms.pre(name, data.args)
-
-            if (!err && !has(type, name))
-                err = new Error('no '+type+':'+name)
-            else {
-              try { value = localCall(name, data.args) }
-              catch (_err) { err = _err }
-            }
-
-            var _stream = pullWeird[
-              {source: 'sink', sink: 'source'}[type] || 'duplex'
-            ](stream)
-
-            if(isSource(type))
-              _stream(err ? pull.error(err) : value)
-            else if (isSink(type))
-              (err ? abortSink(err) : value)(_stream)
-            else if (isDuplex(type))
-              pull(_stream, err ? abortDuplex(err) : value, _stream)
-          }
-        },
-
-        close: closed
-      })
+      if (!has(type, name))
+        throw new Error('no '+type+':'+name)
+      return get(name).apply(emitter, args)
     }
+
+    function closed (err) {
+      // deallocate
+      ps = null
+      if(ws) {
+        if(ws.closed) return
+        ws.closed = true
+        if(ws.onClose) ws.onClose(err)
+      }
+      // deallocate
+      local = null
+      ws = null
+    }
+
 
     function initStream () {
 
-      ps = createPacketStream()//, _cb
+      ps = createPacketStream(localCall, closed)//, _cb
       ws = goodbye(pullWeird(ps, function (err) {
         if(_cb) _cb(err)
       }))
@@ -226,37 +156,23 @@ module.exports = function (codec) {
     //so all operations are queued for free!
     initStream()
 
-
-    function noop (err) {
-      if (err) throw err
-    }
-
     function last (ary) {
       return ary[ary.length - 1]
     }
 
-    function callMethod(name, type, args) {
-      if(!(isRequest(type) || isStream(type)))
-        throw new Error('unsupported type:' + JSON.stringify(type))
-
+    function callMethod (name, type, args) {
       var cb = isFunction (args[args.length - 1]) ? args.pop() : noop
+      var err, value
+      if(!ps)
+        err = new Error('stream is closed')
+      else
+        try {
+          value = ps.callMethod(name, type, args, cb)
+        } catch(_err) {
+          err = _err
+        }
 
-      if(!ps) {
-        var err = new Error('stream is closed')
-        return (
-            isRequest(type) ? cb(err)
-          : isSource(type)  ? pull.error(err)
-          : isSink(type)    ? abortSink(err)
-          :                   cb(err), abortDuplex(err)
-        )
-      }
-
-      if(isRequest(type))
-        return ps.request({name: name, args: args}, cb)
-
-      var ws = ps.stream(), s = pullWeird[type](ws, cb)
-      ws.write({name: name, args: args, type: type})
-      return s
+      return err ? u.errorAsStreamOrCb(type, err, cb) : value
     }
 
     //add all the api methods to emitter recursively
