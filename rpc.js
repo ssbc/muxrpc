@@ -166,10 +166,6 @@ module.exports = function (codec) {
     //so all operations are queued for free!
     ws = initStream()
 
-    function last (ary) {
-      return ary[ary.length - 1]
-    }
-
     function callMethod (name, type, args) {
       var cb = isFunction (args[args.length - 1]) ? args.pop() : noop
       var err, value
