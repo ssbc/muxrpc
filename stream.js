@@ -49,14 +49,12 @@ module.exports = function createPacketStream (localCall, closed) {
         return cb(err)
       }
 
-//      if(!async) cb(null, value)
     },
     stream: function (stream) {
       stream.read = function (data, end) {
         var name = data.name
         var type = data.type
         var err, value
-        //check that this really is part of the local api.
 
         stream.read = null
 
@@ -66,22 +64,12 @@ module.exports = function createPacketStream (localCall, closed) {
         //how would this actually happen?
         if(end) return stream.write(null, end)
 
-        //HANG ON, type should come from the manifest,
-        //*not* from what the client sends.
-//        var err = perms.pre(name, data.args)
-
-//        if (!has(type, name))
-//            err = new Error('no '+type+':'+name)
-//        else {
-
         try { value = localCall(name, data.args, type) }
         catch (_err) { err = _err }
 
         var _stream = pullWeird[
           {source: 'sink', sink: 'source'}[type] || 'duplex'
         ](stream)
-
-
 
         return u.pipeToStream(
           type, _stream,
