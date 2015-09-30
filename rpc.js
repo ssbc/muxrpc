@@ -114,23 +114,20 @@ module.exports = function (codec) {
       return get(name).apply(emitter, args)
     }
 
-    function closed (err) {
-      // deallocate
-      ps = null
-      if(ws) {
-        if(ws.closed) return
-        ws.closed = true
-        if(ws.onClose) ws.onClose(err)
-      }
-      // deallocate
-      local = null
-      ws = null
-    }
-
-
     function initStream () {
 
-      ps = createPacketStream(localCall, closed)//, _cb
+      ps = createPacketStream(localCall, function (err) {
+        // deallocate
+        ps = null
+        if(ws) {
+          if(ws.closed) return
+          ws.closed = true
+          if(ws.onClose) ws.onClose(err)
+        }
+        // deallocate
+        local = null
+        ws = null
+      })
       ws = goodbye(pullWeird(ps, function (err) {
         if(_cb) _cb(err)
       }))
@@ -165,7 +162,7 @@ module.exports = function (codec) {
     function callMethod (name, type, args) {
       var cb = isFunction (args[args.length - 1]) ? args.pop() : noop
       var err, value
-      if(!ps)
+      if(!ws)
         err = new Error('stream is closed')
       else
         try {
@@ -194,8 +191,6 @@ module.exports = function (codec) {
     emitter._emit = emitter.emit
 
     emitter.emit = function () {
-      if (!ps)
-        return
       var args = [].slice.call(arguments)
       if(args.length == 0) return
 
@@ -234,7 +229,6 @@ module.exports = function (codec) {
         if(_cb) {
           var cb = _cb; _cb = null; cb(err)
         }
-        else if(err) emitter.emit('error', err)
       }
 
       once = true
