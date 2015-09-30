@@ -115,14 +115,18 @@ module.exports = function (codec) {
     }
 
     function initStream () {
-
       ps = createPacketStream(localCall, function (err) {
         // deallocate
         ps = null
         if(ws) {
+          ws.ended = true
           if(ws.closed) return
           ws.closed = true
-          if(ws.onClose) ws.onClose(err)
+          if(ws.onClose) {
+            var close = ws.onClose
+            ws = null
+            close(err)
+          }
         }
         // deallocate
         local = null
@@ -136,17 +140,27 @@ module.exports = function (codec) {
 
       ws.callMethod = ps.callMethod
 
+      //hack to work around ordering in setting ps.ended.
+      //Question: if an object has subobjects, which
+      //all have close events, should the subobjects fire close
+      //before the parent? or should parents close after?
+      //should there be a preclose event on the parent
+      //that fires when it's about to close all the children?
+      ws.isOpen = function () {
+        return ps.ended
+      }
+
       ws.close = function (err, cb) {
         if(isFunction(err))
           cb = err, err = false
         if(!ps) return (cb && cb())
         if(err) return ps.destroy(err), (cb && cb())
-
         closePS(cb)
 
         return this
       }
       ws.closed = false
+
       return ws
     }
 
@@ -215,7 +229,7 @@ module.exports = function (codec) {
 
     emitter.createStream = function (cb) {
       _cb = cb
-      if(!ps || ps.ended) {
+      if(!ws || ws.isOpen()) {
         initStream()
         once = false
       }
@@ -240,12 +254,7 @@ module.exports = function (codec) {
     emitter.closed = false
 
     emitter.close = function (err, cb) {
-      if(isFunction(err))
-        cb = err, err = false
-      if(!ps) return (cb && cb())
-      if(err) return ps.destroy(err), (cb && cb())
-
-      closePS(cb)
+      ws.close(err, cb)
       return this
     }
 
