@@ -137,6 +137,8 @@ module.exports = function (codec) {
 
       ws = codec ? codec(ws) : ws
 
+      ws.callMethod = ps.callMethod
+
       ws.close = function (err, cb) {
         if(isFunction(err))
           cb = err, err = false
@@ -167,7 +169,7 @@ module.exports = function (codec) {
         err = new Error('stream is closed')
       else
         try {
-          value = ps.callMethod(name, type, args, cb)
+          value = ws.callMethod(name, type, args, cb)
         } catch(_err) {
           err = _err
         }
@@ -198,7 +200,7 @@ module.exports = function (codec) {
       if(args.length == 0) return
 
       var err = perms.pre(['emit'], args)
-      if(!err) ps.message(args)
+      if(!err) ws.callMethod('emit', null, args)
       else     throw err
 
       return emitter

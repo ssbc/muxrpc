@@ -89,6 +89,8 @@ module.exports = function createPacketStream (localCall, closed) {
   })
 
   stream.callMethod = function callMethod(name, type, args, cb) {
+    if(name === 'emit') return stream.message(args)
+
     if(!(isRequest(type) || isStream(type)))
       throw new Error('unsupported type:' + JSON.stringify(type))
 
