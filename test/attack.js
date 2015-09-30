@@ -101,4 +101,19 @@ tape('duplex which is not public', function (t) {
   )
 })
 
+tape('client and server manifest have different types', function (t) {
+  var clientM = { foo: 'async' }
+  var serverM = { foo: 'source' }
 
+  var A = mux(clientM, null) ()
+  var B = mux(null, serverM) ()
+
+  var as = A.createStream()
+  pull(as, B.createStream(), as)
+
+  A.foo(function (err) {
+    console.log(err)
+    t.ok(err)
+    t.end()
+  })
+})
