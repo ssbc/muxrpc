@@ -84,15 +84,8 @@ module.exports = function (codec) {
       return getPath(local, name)
     }
 
-    var ps, ws, _cb, once = false
+    var ws, _cb, once = false
 
-
-    function closePS (cb) {
-      ps.close(function (err) {
-        if(cb) cb(err)
-        else if(err) throw err
-      })
-    }
 
     function localCall(name, args, type) {
       var err = perms.pre(name)
@@ -115,7 +108,7 @@ module.exports = function (codec) {
     }
 
     function initStream () {
-      ps = createPacketStream(localCall, function (err) {
+      var ps = createPacketStream(localCall, function (err) {
         // deallocate
         ps = null
         if(ws) {
@@ -155,7 +148,11 @@ module.exports = function (codec) {
           cb = err, err = false
         if(!ps) return (cb && cb())
         if(err) return ps.destroy(err), (cb && cb())
-        closePS(cb)
+
+        ps.close(function (err) {
+          if(cb) cb(err)
+          else if(err) throw err
+        })
 
         return this
       }
@@ -167,7 +164,7 @@ module.exports = function (codec) {
     //if we create the stream immediately,
     //we get the pull-stream's internal buffer
     //so all operations are queued for free!
-    initStream()
+    ws = initStream()
 
     function last (ary) {
       return ary[ary.length - 1]
@@ -230,7 +227,7 @@ module.exports = function (codec) {
     emitter.createStream = function (cb) {
       _cb = cb
       if(!ws || ws.isOpen()) {
-        initStream()
+        ws = initStream()
         once = false
       }
       else if(once)
