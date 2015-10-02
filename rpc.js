@@ -102,9 +102,19 @@ module.exports = function (codec) {
     //so all operations are queued for free!
     ws = initStream(localCall, codec)
 
-    function createApi(path, remoteApi, remoteCall) {
+    function createApi(path, remoteApi, _remoteCall) {
 
       var emitter = new EventEmitter()
+
+      function remoteCall(name, type, args) {
+        var cb = isFunction (args[args.length - 1]) ? args.pop() : noop
+        var value
+
+        try { value = _remoteCall(name, type, args, cb) }
+        catch(err) { return u.errorAsStreamOrCb(type, err, cb)}
+
+        return value
+      }
 
       //add all the api methods to emitter recursively
       ;(function recurse (obj, api, path) {
@@ -125,30 +135,21 @@ module.exports = function (codec) {
       emitter.emit = function () {
         var args = [].slice.call(arguments)
         if(args.length == 0) return
-
-        var err = perms.pre(['emit'], args)
-        if(!err) ws.remoteCall('emit', null, args)
-        else     throw err
-
+        remoteCall('emit', null, args)
       }
 
       return emitter
     }
 
-    emitter = createApi([], remoteApi, function (name, type, args) {
-        var cb = isFunction (args[args.length - 1]) ? args.pop() : noop
-        var err, value
-        if(ws.closed)
-          err = new Error('stream is closed')
-        else
-          try {
-            value = ws.remoteCall(name, type, args, cb)
-          } catch(_err) {
-            err = _err
-          }
+    emitter = createApi([], remoteApi, function (name, type, args, cb) {
+      //var cb = isFunction (args[args.length - 1]) ? args.pop() : noop
 
-        return err ? u.errorAsStreamOrCb(type, err, cb) : value
-      })
+      if(ws.closed) err = new Error('stream is closed')
+      else          err = perms.pre(name, args)
+      if(err) throw err
+
+      return ws.remoteCall(name, type, args, cb)
+    })
 
     //this is the stream to the remote server.
     //it only makes sense to have one of these.
