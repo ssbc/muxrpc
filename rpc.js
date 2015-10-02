@@ -64,7 +64,7 @@ module.exports = function (codec) {
     else
       perms = Permissions()
 
-    var emitter = new EventEmitter ()
+    var emitter
 
     function has(type, name) {
       return type === getPath(localApi, name) && isFunction(get(name))
@@ -117,32 +117,40 @@ module.exports = function (codec) {
       return err ? u.errorAsStreamOrCb(type, err, cb) : value
     }
 
-    //add all the api methods to emitter recursively
-    ;(function recurse (obj, api, path) {
-      for(var name in api) (function (name, type) {
-        var _path = path ? path.concat(name) : [name]
-        obj[name] =
-            isObject(type)
-          ? recurse({}, type, _path)
-          : function () {
-              return remoteCall(_path, type, [].slice.call(arguments))
-            }
-      })(name, api[name])
-      return obj
-    })(emitter, remoteApi)
+    function createApi(path, remoteApi, remoteCall) {
 
-    emitter._emit = emitter.emit
+      var emitter = new EventEmitter()
 
-    emitter.emit = function () {
-      var args = [].slice.call(arguments)
-      if(args.length == 0) return
+      //add all the api methods to emitter recursively
+      ;(function recurse (obj, api, path) {
+        for(var name in api) (function (name, type) {
+          var _path = path ? path.concat(name) : [name]
+          obj[name] =
+              isObject(type)
+            ? recurse({}, type, _path)
+            : function () {
+                return remoteCall(_path, type, [].slice.call(arguments))
+              }
+        })(name, api[name])
+        return obj
+      })(emitter, remoteApi)
 
-      var err = perms.pre(['emit'], args)
-      if(!err) ws.remoteCall('emit', null, args)
-      else     throw err
+      emitter._emit = emitter.emit
+
+      emitter.emit = function () {
+        var args = [].slice.call(arguments)
+        if(args.length == 0) return
+
+        var err = perms.pre(['emit'], args)
+        if(!err) ws.remoteCall('emit', null, args)
+        else     throw err
+
+      }
 
       return emitter
     }
+
+    emitter = createApi([], remoteApi, remoteCall)
 
     //this is the stream to the remote server.
     //it only makes sense to have one of these.
