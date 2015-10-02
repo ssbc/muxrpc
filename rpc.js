@@ -102,21 +102,6 @@ module.exports = function (codec) {
     //so all operations are queued for free!
     ws = initStream(localCall, codec)
 
-    function remoteCall (name, type, args) {
-      var cb = isFunction (args[args.length - 1]) ? args.pop() : noop
-      var err, value
-      if(ws.closed)
-        err = new Error('stream is closed')
-      else
-        try {
-          value = ws.remoteCall(name, type, args, cb)
-        } catch(_err) {
-          err = _err
-        }
-
-      return err ? u.errorAsStreamOrCb(type, err, cb) : value
-    }
-
     function createApi(path, remoteApi, remoteCall) {
 
       var emitter = new EventEmitter()
@@ -150,7 +135,20 @@ module.exports = function (codec) {
       return emitter
     }
 
-    emitter = createApi([], remoteApi, remoteCall)
+    emitter = createApi([], remoteApi, function (name, type, args) {
+        var cb = isFunction (args[args.length - 1]) ? args.pop() : noop
+        var err, value
+        if(ws.closed)
+          err = new Error('stream is closed')
+        else
+          try {
+            value = ws.remoteCall(name, type, args, cb)
+          } catch(_err) {
+            err = _err
+          }
+
+        return err ? u.errorAsStreamOrCb(type, err, cb) : value
+      })
 
     //this is the stream to the remote server.
     //it only makes sense to have one of these.
