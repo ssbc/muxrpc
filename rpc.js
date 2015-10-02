@@ -108,22 +108,16 @@ module.exports = function (codec) {
     }
 
     function initStream () {
+      var ws
       var ps = createPacketStream(localCall, function (err) {
-        // deallocate
-        ps = null
-        if(ws) {
-          ws.ended = true
-          if(ws.closed) return
-          ws.closed = true
-          if(ws.onClose) {
-            var close = ws.onClose
-            ws = null
-            close(err)
-          }
+        ps = null // deallocate
+        ws.ended = true
+        if(ws.closed) return
+        ws.closed = true
+        if(ws.onClose) {
+          var close = ws.onClose
+          close(err)
         }
-        // deallocate
-        local = null
-        ws = null
       })
       ws = goodbye(pullWeird(ps, function (err) {
         if(_cb) _cb(err)
@@ -140,7 +134,7 @@ module.exports = function (codec) {
       //should there be a preclose event on the parent
       //that fires when it's about to close all the children?
       ws.isOpen = function () {
-        return ps.ended
+        return !ps.ended
       }
 
       ws.close = function (err, cb) {
@@ -169,7 +163,7 @@ module.exports = function (codec) {
     function callMethod (name, type, args) {
       var cb = isFunction (args[args.length - 1]) ? args.pop() : noop
       var err, value
-      if(!ws)
+      if(ws.closed)
         err = new Error('stream is closed')
       else
         try {
@@ -222,7 +216,7 @@ module.exports = function (codec) {
 
     emitter.createStream = function (cb) {
       _cb = cb
-      if(!ws || ws.isOpen()) {
+      if(!ws.isOpen()) {
         ws = initStream()
         once = false
       }
