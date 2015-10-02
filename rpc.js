@@ -5,9 +5,7 @@ var Permissions  = require('./permissions')
 var goodbye      = require('pull-goodbye')
 var pull         = require('pull-stream')
 var pullWeird    = require('./pull-weird')
-
-
-var createPacketStream = require('./stream')
+var initStream   = require('./stream')
 
 function isFunction (f) {
   return 'function' === typeof f
@@ -33,14 +31,6 @@ function isPerms (p) {
     isFunction(p.post)
   )
 }
-
-function isSource    (t) { return 'source' === t }
-function isSink      (t) { return 'sink'   === t }
-function isDuplex    (t) { return 'duplex' === t }
-function isSync      (t) { return 'sync'  === t }
-function isAsync     (t) { return 'async'  === t }
-function isRequest   (t) { return isSync(t) || isAsync(t) }
-function isStream    (t) { return isSource(t) || isSink(t) || isDuplex(t) }
 
 function noop (err) {
   if (err) throw err
@@ -107,67 +97,19 @@ module.exports = function (codec) {
       return get(name).apply(emitter, args)
     }
 
-    function initStream () {
-      var ws
-      var ps = createPacketStream(localCall, function (err) {
-        ps = null // deallocate
-        ws.ended = true
-        if(ws.closed) return
-        ws.closed = true
-        if(ws.onClose) {
-          var close = ws.onClose
-          close(err)
-        }
-      })
-      ws = goodbye(pullWeird(ps, function (err) {
-        if(_cb) _cb(err)
-      }))
-
-      ws = codec ? codec(ws) : ws
-
-      ws.callMethod = ps.callMethod
-
-      //hack to work around ordering in setting ps.ended.
-      //Question: if an object has subobjects, which
-      //all have close events, should the subobjects fire close
-      //before the parent? or should parents close after?
-      //should there be a preclose event on the parent
-      //that fires when it's about to close all the children?
-      ws.isOpen = function () {
-        return !ps.ended
-      }
-
-      ws.close = function (err, cb) {
-        if(isFunction(err))
-          cb = err, err = false
-        if(!ps) return (cb && cb())
-        if(err) return ps.destroy(err), (cb && cb())
-
-        ps.close(function (err) {
-          if(cb) cb(err)
-          else if(err) throw err
-        })
-
-        return this
-      }
-      ws.closed = false
-
-      return ws
-    }
-
     //if we create the stream immediately,
     //we get the pull-stream's internal buffer
     //so all operations are queued for free!
-    ws = initStream()
+    ws = initStream(localCall, codec)
 
-    function callMethod (name, type, args) {
+    function remoteCall (name, type, args) {
       var cb = isFunction (args[args.length - 1]) ? args.pop() : noop
       var err, value
       if(ws.closed)
         err = new Error('stream is closed')
       else
         try {
-          value = ws.callMethod(name, type, args, cb)
+          value = ws.remoteCall(name, type, args, cb)
         } catch(_err) {
           err = _err
         }
@@ -183,7 +125,7 @@ module.exports = function (codec) {
             isObject(type)
           ? recurse({}, type, _path)
           : function () {
-              return callMethod(_path, type, [].slice.call(arguments))
+              return remoteCall(_path, type, [].slice.call(arguments))
             }
       })(name, api[name])
       return obj
@@ -196,7 +138,7 @@ module.exports = function (codec) {
       if(args.length == 0) return
 
       var err = perms.pre(['emit'], args)
-      if(!err) ws.callMethod('emit', null, args)
+      if(!err) ws.remoteCall('emit', null, args)
       else     throw err
 
       return emitter
@@ -217,7 +159,7 @@ module.exports = function (codec) {
     emitter.createStream = function (cb) {
       _cb = cb
       if(!ws.isOpen()) {
-        ws = initStream()
+        ws = initStream(localCall, codec)
         once = false
       }
       else if(once)

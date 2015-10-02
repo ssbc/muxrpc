@@ -1,6 +1,7 @@
 var PacketStream = require('packet-stream')
 var pull         = require('pull-stream')
 var pullWeird    = require('./pull-weird')
+var goodbye      = require('pull-goodbye')
 var u            = require('./util')
 function isFunction (f) {
   return 'function' === typeof f
@@ -22,13 +23,9 @@ function isAsync     (t) { return 'async'  === t }
 function isRequest   (t) { return isSync(t) || isAsync(t) }
 function isStream    (t) { return isSource(t) || isSink(t) || isDuplex(t) }
 
-function noop (err) {
-  if (err) throw err
-}
+module.exports = function createPacketStream (localCall, codec) {
 
-module.exports = function createPacketStream (localCall, closed) {
-
-  var stream = PacketStream({
+  var ps = PacketStream({
     message: function (msg) {
       if(isString(msg)) return
       if(msg.length > 0 && isString(msg[0]))
@@ -85,24 +82,65 @@ module.exports = function createPacketStream (localCall, closed) {
       }
     },
 
-    close: closed
+    close: function (err) {
+        ps = null // deallocate
+        ws.ended = true
+        if(ws.closed) return
+        ws.closed = true
+        if(ws.onClose) {
+          var close = ws.onClose
+          close(err)
+        }
+      }
   })
 
-  stream.callMethod = function callMethod(name, type, args, cb) {
-    if(name === 'emit') return stream.message(args)
+  var ws = goodbye(pullWeird(ps, function (_) {
+    //this error will be handled in PacketStream.close
+  }))
+
+  ws = codec ? codec(ws) : ws
+
+  ws.remoteCall = function (name, type, args, cb) {
+    if(name === 'emit') return ps.message(args)
 
     if(!(isRequest(type) || isStream(type)))
       throw new Error('unsupported type:' + JSON.stringify(type))
 
     if(isRequest(type))
-      return stream.request({name: name, args: args}, cb)
+      return ps.request({name: name, args: args}, cb)
 
-    var ws = stream.stream(), s = pullWeird[type](ws, cb)
+    var ws = ps.stream(), s = pullWeird[type](ws, cb)
     ws.write({name: name, args: args, type: type})
     return s
   }
 
-  return stream
 
+  //hack to work around ordering in setting ps.ended.
+  //Question: if an object has subobjects, which
+  //all have close events, should the subobjects fire close
+  //before the parent? or should parents close after?
+  //should there be a preclose event on the parent
+  //that fires when it's about to close all the children?
+  ws.isOpen = function () {
+    return !ps.ended
+  }
+
+  ws.close = function (err, cb) {
+    if(isFunction(err))
+      cb = err, err = false
+    if(!ps) return (cb && cb())
+    if(err) return ps.destroy(err), (cb && cb())
+
+    ps.close(function (err) {
+      if(cb) cb(err)
+      else if(err) throw err
+    })
+
+    return this
+  }
+  ws.closed = false
+
+  return ws
 }
+
 
