@@ -6,21 +6,13 @@ var goodbye      = require('pull-goodbye')
 var pull         = require('pull-stream')
 var pullWeird    = require('./pull-weird')
 var initStream   = require('./stream')
-
+var createApi    = require('./api')
 function isFunction (f) {
   return 'function' === typeof f
 }
 
-function isString (s) {
-  return 'string' === typeof s
-}
-
 function isObject (o) {
   return o && 'object' === typeof o
-}
-
-function getPath(obj, path) {
-  return u.get(obj, path)
 }
 
 function isPerms (p) {
@@ -31,11 +23,6 @@ function isPerms (p) {
     isFunction(p.post)
   )
 }
-
-function noop (err) {
-  if (err) throw err
-}
-
 
 module.exports = function (codec) {
 
@@ -67,11 +54,11 @@ module.exports = function (codec) {
     var emitter
 
     function has(type, name) {
-      return type === getPath(localApi, name) && isFunction(get(name))
+      return type === u.get(localApi, name) && isFunction(get(name))
     }
 
     function get(name) {
-      return getPath(local, name)
+      return u.get(local, name)
     }
 
     var ws, _cb, once = false
@@ -102,47 +89,7 @@ module.exports = function (codec) {
     //so all operations are queued for free!
     ws = initStream(localCall, codec)
 
-    function createApi(path, remoteApi, _remoteCall) {
-
-      var emitter = new EventEmitter()
-
-      function remoteCall(name, type, args) {
-        var cb = isFunction (args[args.length - 1]) ? args.pop() : noop
-        var value
-
-        try { value = _remoteCall(name, type, args, cb) }
-        catch(err) { return u.errorAsStreamOrCb(type, err, cb)}
-
-        return value
-      }
-
-      //add all the api methods to emitter recursively
-      ;(function recurse (obj, api, path) {
-        for(var name in api) (function (name, type) {
-          var _path = path ? path.concat(name) : [name]
-          obj[name] =
-              isObject(type)
-            ? recurse({}, type, _path)
-            : function () {
-                return remoteCall(_path, type, [].slice.call(arguments))
-              }
-        })(name, api[name])
-        return obj
-      })(emitter, remoteApi)
-
-      emitter._emit = emitter.emit
-
-      emitter.emit = function () {
-        var args = [].slice.call(arguments)
-        if(args.length == 0) return
-        remoteCall('emit', null, args)
-      }
-
-      return emitter
-    }
-
     emitter = createApi([], remoteApi, function (name, type, args, cb) {
-      //var cb = isFunction (args[args.length - 1]) ? args.pop() : noop
 
       if(ws.closed) err = new Error('stream is closed')
       else          err = perms.pre(name, args)
