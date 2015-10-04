@@ -1,3 +1,4 @@
+'use strict'
 var pull = require('pull-stream')
 // wrap pull streams around packet-stream's weird streams.
 

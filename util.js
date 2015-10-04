@@ -1,4 +1,4 @@
-
+'use strict';
 var pull = require('pull-stream')
 
 function isString (s) {
