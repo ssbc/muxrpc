@@ -1,3 +1,4 @@
+'use strict';
 var u            = require('./util')
 var EventEmitter = require('events').EventEmitter
 var Permissions  = require('./permissions')
@@ -45,24 +46,17 @@ module.exports = function (codec) {
 
   function createAccess(path, perms) {
 
-    if(isPerms(perms));
-    else if(isObject(perms))
-      perms = Permissions(perms)
-    else
-      perms = Permissions()
+    if     (isPerms(perms))  ;
+    else if(isObject(perms)) perms = Permissions(perms)
+    else                     perms = Permissions()
 
     var emitter
 
     function has(type, name) {
-      return type === u.get(localApi, name) && isFunction(get(name))
+      return type === u.get(localApi, name) && isFunction(u.get(local, name))
     }
 
-    function get(name) {
-      return u.get(local, name)
-    }
-
-    var ws, _cb, once = false
-
+    var ws, _cb
 
     function localCall(name, args, type) {
       var err = perms.pre(name)
@@ -74,23 +68,32 @@ module.exports = function (codec) {
       if(type === 'async')
         if(has('sync', name)) {
           var cb = args.pop(), value
-          try { value = get(name).apply(emitter, args) }
+          try { value = u.get(local, name).apply(emitter, args) }
           catch (err) { return cb(err) }
           return cb(null, value)
         }
 
       if (!has(type, name))
         throw new Error('no '+type+':'+name)
-      return get(name).apply(emitter, args)
+      return u.get(local, name).apply(emitter, args)
+    }
+
+    function onClose (err) {
+      if(emitter.closed) return
+      emitter.closed = true
+      emitter._emit('closed')
+      if(_cb) {
+        var cb = _cb; _cb = null; cb(err)
+      }
     }
 
     //if we create the stream immediately,
     //we get the pull-stream's internal buffer
     //so all operations are queued for free!
-    ws = initStream(localCall, codec)
+    ws = initStream(localCall, codec, onClose)
 
     emitter = createApi([], remoteApi, function (name, type, args, cb) {
-
+      var err
       if(ws.closed) err = new Error('stream is closed')
       else          err = perms.pre(name, args)
       if(err) throw err
@@ -98,39 +101,14 @@ module.exports = function (codec) {
       return ws.remoteCall(name, type, args, cb)
     })
 
-    //this is the stream to the remote server.
-    //it only makes sense to have one of these.
-    //either throw an error if the user creates
-    //another when the previous has not yet ended
-    //or abort the previous one, and create a new one?
-
-    //there is very little test coverage for this,
-    //and I don't think we have ever used this feature.
-    //should remove if this does not break anything.
-
-    var once = false
+    var first = true
 
     emitter.createStream = function (cb) {
       _cb = cb
-      if(!ws.isOpen()) {
-        ws = initStream(localCall, codec)
-        once = false
-      }
-      else if(once)
-        throw new Error('only one stream allowed at a time')
+      if(first) { first = false}
+      else ws = ws.recreate(onClose)
 
-      ws.onClose = function (err) {
-        if(emitter.closed) return
-        emitter.closed = true
-        emitter._emit('closed')
-        if(_cb) {
-          var cb = _cb; _cb = null; cb(err)
-        }
-      }
-
-      once = true
       emitter.close = ws.close
-      ws.closed = false
       return ws
     }
 
@@ -144,3 +122,4 @@ module.exports = function (codec) {
     return emitter
   }
 }
+

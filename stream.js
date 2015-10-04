@@ -1,3 +1,4 @@
+'use strict';
 var PacketStream = require('packet-stream')
 var pull         = require('pull-stream')
 var pullWeird    = require('./pull-weird')
@@ -23,7 +24,7 @@ function isAsync     (t) { return 'async'  === t }
 function isRequest   (t) { return isSync(t) || isAsync(t) }
 function isStream    (t) { return isSource(t) || isSink(t) || isDuplex(t) }
 
-module.exports = function createPacketStream (localCall, codec) {
+module.exports = function initStream (localCall, codec, onClose) {
 
   var ps = PacketStream({
     message: function (msg) {
@@ -87,9 +88,8 @@ module.exports = function createPacketStream (localCall, codec) {
         ws.ended = true
         if(ws.closed) return
         ws.closed = true
-        if(ws.onClose) {
-          var close = ws.onClose
-          close(err)
+        if(onClose) {
+          var close = onClose; onClose = null; close(err)
         }
       }
   })
@@ -139,6 +139,20 @@ module.exports = function createPacketStream (localCall, codec) {
     return this
   }
   ws.closed = false
+
+  ws.recreate = function (onClose) {
+
+    //this is the stream to the remote server.
+    //it only makes sense to have one of these.
+    //throw an error if the user creates
+    //(it would also make sense to abort the previous one,
+    //and create a new one, but this is what the tests cover)
+
+    if(ws.isOpen())
+      throw new Error('only one stream allowed at a time')
+
+    return initStream(localCall, codec, onClose)
+  }
 
   return ws
 }
