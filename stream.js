@@ -30,7 +30,7 @@ module.exports = function initStream (localCall, codec, onClose) {
     message: function (msg) {
       if(isString(msg)) return
       if(msg.length > 0 && isString(msg[0]))
-        localCall('emit', msg)
+        localCall('msg', 'emit', msg)
     },
     request: function (opts, cb) {
       var name = opts.name, args = opts.args
@@ -41,7 +41,7 @@ module.exports = function initStream (localCall, codec, onClose) {
         inCB = true; cb(err, value)
       })
       try {
-        value = localCall(name, args, 'async')
+        value = localCall('async', name, args)
       } catch (err) {
         if(inCB || called) throw err
         return cb(err)
@@ -62,7 +62,7 @@ module.exports = function initStream (localCall, codec, onClose) {
         //how would this actually happen?
         if(end) return stream.write(null, end)
 
-        try { value = localCall(name, data.args, type) }
+        try { value = localCall(type, name, data.args) }
         catch (_err) { err = _err }
 
         var _stream = pullWeird[
@@ -100,7 +100,7 @@ module.exports = function initStream (localCall, codec, onClose) {
 
   ws = codec ? codec(ws) : ws
 
-  ws.remoteCall = function (name, type, args, cb) {
+  ws.remoteCall = function (type, name, args, cb) {
     if(name === 'emit') return ps.message(args)
 
     if(!(isRequest(type) || isStream(type)))

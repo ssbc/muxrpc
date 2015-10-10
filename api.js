@@ -18,11 +18,11 @@ module.exports =    function createApi(path, remoteApi, _remoteCall) {
 
   var emitter = new EventEmitter()
 
-  function remoteCall(name, type, args) {
+  function remoteCall(type, name, args) {
     var cb = isFunction (args[args.length - 1]) ? args.pop() : noop
     var value
 
-    try { value = _remoteCall(name, type, args, cb) }
+    try { value = _remoteCall(type, name, args, cb) }
     catch(err) { return u.errorAsStreamOrCb(type, err, cb)}
 
     return value
@@ -36,7 +36,7 @@ module.exports =    function createApi(path, remoteApi, _remoteCall) {
           isObject(type)
         ? recurse({}, type, _path)
         : function () {
-            return remoteCall(_path, type, [].slice.call(arguments))
+            return remoteCall(type, _path, [].slice.call(arguments))
           }
     })(name, api[name])
     return obj
@@ -47,7 +47,7 @@ module.exports =    function createApi(path, remoteApi, _remoteCall) {
   emitter.emit = function () {
     var args = [].slice.call(arguments)
     if(args.length == 0) return
-    remoteCall('emit', null, args)
+    remoteCall('msg', 'emit', args)
   }
 
   return emitter

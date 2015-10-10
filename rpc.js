@@ -22,7 +22,7 @@ module.exports = function (codec) {
     return type === u.get(localApi, name)
   }
 
-  function localCall(name, args, type) {
+  function localCall(type, name, args) {
 
     if(name === 'emit')
       return emitter._emit.apply(emitter, args)
@@ -44,10 +44,10 @@ module.exports = function (codec) {
 
     perms = Permissions(perms)
 
-    function _localCall (name, args, type) {
+    function _localCall (type, name, args) {
       var err = perms.pre(name)
       if(err) throw err
-      return localCall(name, args, type)
+      return localCall(type, name, args)
     }
 
     var ws = initStream(_localCall, codec, onClose)
@@ -95,9 +95,9 @@ module.exports = function (codec) {
     //we get the pull-stream's internal buffer
     //so all operations are queued for free!
 
-    emitter = createApi([], remoteApi, function (name, type, args, cb) {
+    emitter = createApi([], remoteApi, function (type, name, args, cb) {
       if(ws.closed) throw new Error('stream is closed')
-      return ws.remoteCall(name, type, args, cb)
+      return ws.remoteCall(type, name, args, cb)
     })
 
     var first = true
