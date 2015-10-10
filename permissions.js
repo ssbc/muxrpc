@@ -15,6 +15,15 @@ function toArray(str) {
   return isArray(str) ? str : str.split('.')
 }
 
+function isPerms (p) {
+  return (
+    p &&
+    isFunction(p.pre) &&
+    isFunction(p.test) &&
+    isFunction(p.post)
+  )
+}
+
 /*
 
 perms:
@@ -48,6 +57,8 @@ create perms:
 */
 
 module.exports = function (opts) {
+  if(isPerms(opts)) return opts
+
   var allow = null
   var deny = {}
 
