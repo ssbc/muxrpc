@@ -14,7 +14,7 @@ function noop (err) {
   if (err) throw err
 }
 
-module.exports =    function createApi(path, remoteApi, _remoteCall) {
+module.exports = function (path, remoteApi, _remoteCall) {
 
   var emitter = new EventEmitter()
 
