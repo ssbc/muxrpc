@@ -16,7 +16,13 @@ function isFunction (f) {
 module.exports = function (codec) {
 
   var localApi = {}, local = {}, remoteApi = {}
-  var emitter = null
+  var emitter = null, id = null
+  var context = {
+        _emit: function (event, value) {
+          emitter && emitter._emit(event, value)
+          return context
+        }
+      }
 
   function has(type, name) {
     return type === u.get(localApi, name)
@@ -24,20 +30,23 @@ module.exports = function (codec) {
 
   function localCall(type, name, args) {
 
+    //this one needs execute on emitter, so
+    //because otherwise it wont find the listeners.
     if(name === 'emit')
       return emitter._emit.apply(emitter, args)
 
     if(type === 'async')
       if(has('sync', name)) {
         var cb = args.pop(), value
-        try { value = u.get(local, name).apply(emitter, args) }
+        try { value = u.get(local, name).apply(context, args) }
         catch (err) { return cb(err) }
         return cb(null, value)
       }
 
     if (!has(type, name))
       throw new Error('no '+type+':'+name)
-    return u.get(local, name).apply(emitter, args)
+
+    return u.get(local, name).apply(context, args)
   }
 
   function createStream (path, perms, onClose) {
@@ -54,6 +63,7 @@ module.exports = function (codec) {
     ws.createAccess = function () {
       return createAccess(path, perms, ws)
     }
+
     return ws
   }
 
@@ -98,6 +108,17 @@ module.exports = function (codec) {
     emitter = createApi([], remoteApi, function (type, name, args, cb) {
       if(ws.closed) throw new Error('stream is closed')
       return ws.remoteCall(type, name, args, cb)
+    })
+
+    //g/setter for id. this is enough to support the way scuttlebot
+    //works with access to the rpc object.
+
+    Object.__defineGetter__.call(emitter, 'id', function () {
+      return id
+    })
+
+    Object.__defineSetter__.call(emitter, 'id', function (value) {
+      context.id = id = value
     })
 
     var first = true
