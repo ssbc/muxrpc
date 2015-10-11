@@ -33,7 +33,8 @@ module.exports = function (codec) {
     //this one needs execute on emitter, so
     //because otherwise it wont find the listeners.
     if(name === 'emit')
-      return emitter._emit.apply(emitter, args)
+      throw new Error('emit has been removed')
+//      return emitter._emit.apply(emitter, args)
 
     if(type === 'async')
       if(has('sync', name)) {
