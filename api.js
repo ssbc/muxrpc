@@ -44,13 +44,7 @@ module.exports = function (path, remoteApi, _remoteCall) {
 
   //legacy local emit, from when remote emit was supported.
   emitter._emit = emitter.emit
-//
-//  emitter.emit = function () {
-//    var args = [].slice.call(arguments)
-//    if(args.length == 0) return
-//    remoteCall('msg', 'emit', args)
-//  }
-//
+
   return emitter
 }
 
