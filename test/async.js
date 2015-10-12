@@ -179,7 +179,7 @@ module.exports = function(serializer, buffers) {
     pull(dup, dup)
   })
 
-  tape('async - error', function (t) {
+  tape('async - error1', function (t) {
     var A = mux(client, null) ()
 
     var s = A.createStream()
@@ -192,7 +192,7 @@ module.exports = function(serializer, buffers) {
     s.sink(function (abort, cb) { cb(true) })
   })
 
-  tape('async - error', function (t) {
+  tape('async - error2', function (t) {
     var A = mux(client, null) ()
 
     var s = A.createStream()
@@ -226,33 +226,33 @@ module.exports = function(serializer, buffers) {
 
   })
 
-  tape('async - error', function (t) {
-    var A = mux(client, null) ()
-
-    var s = A.createStream()
-
-    A.hello('world', function (err, value) {
-      t.ok(err)
-
-      var B = mux(null, client) ({
-        hello: function (a, cb) {
-          cb(null, 'hello, '+a)
-        },
-      })
-
-      var s = A.createStream()
-
-      pull(s, B.createStream(), s)
-
-      A.hello('world', function (err, value) {
-        t.notOk(err)
-        t.equal(value, 'hello, world')
-        t.end()
-      })
-    })
-
-    s.sink(function (abort, cb) { cb(true) })
-  })
+//  tape('async - error, and reconnect', function (t) {
+//    var A = mux(client, null) ()
+//
+//    var s = A.createStream()
+//
+//    A.hello('world', function (err, value) {
+//      t.ok(err)
+//
+//      var B = mux(null, client) ({
+//        hello: function (a, cb) {
+//          cb(null, 'hello, '+a)
+//        },
+//      })
+//
+//      var s = A.createStream()
+//
+//      pull(s, B.createStream(), s)
+//
+//      A.hello('world', function (err, value) {
+//        t.notOk(err)
+//        t.equal(value, 'hello, world')
+//        t.end()
+//      })
+//    })
+//
+//    s.sink(function (abort, cb) { cb(true) })
+//  })
 
   tape('recover error written to outer stream', function (t) {
 
