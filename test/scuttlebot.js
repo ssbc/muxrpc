@@ -28,6 +28,22 @@ tape('give a muxrpc instance an id', function (t) {
   })
 })
 
+
+tape('initialize muxrpc with an id', function (t) {
+
+  var bob = Muxrpc(null, manifest)  (api, null, 'Alice')
+  var alice = Muxrpc(manifest, null)  ()
+  var as = alice.createStream()
+  pull(as, bob.createStream(), as)
+
+  alice.hello('bob', function (err, data) {
+    t.notOk(err)
+    t.equal(data, 'bob:Alice')
+    t.end()
+  })
+})
+
+
 tape('emit an event from the called api function', function (t) {
 
   t.plan(3)
