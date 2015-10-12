@@ -140,20 +140,6 @@ module.exports = function initStream (localCall, codec, onClose) {
   }
   ws.closed = false
 
-  ws.recreate = function (onClose) {
-
-    //this is the stream to the remote server.
-    //it only makes sense to have one of these.
-    //throw an error if the user creates
-    //(it would also make sense to abort the previous one,
-    //and create a new one, but this is what the tests cover)
-
-    if(ws.isOpen())
-      throw new Error('only one stream allowed at a time')
-
-    return initStream(localCall, codec, onClose)
-  }
-
   return ws
 }
 

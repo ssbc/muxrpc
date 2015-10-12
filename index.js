@@ -24,18 +24,16 @@ module.exports = function (remoteApi, localApi, codec) {
         id: id
       }
 
-    function onClose (err) {
-      if(emitter.closed) return
-      emitter.closed = true
-      emitter.emit('closed')
-      if(_cb) {
-        var cb = _cb; _cb = null; cb(err)
-      }
-    }
-
     var ws = initStream(
       createLocalCall(local, localApi, perms).bind(context),
-      codec, onClose
+      codec, function (err) {
+        if(emitter.closed) return
+        emitter.closed = true
+        emitter.emit('closed')
+        if(_cb) {
+          var cb = _cb; _cb = null; cb(err)
+        }
+      }
     )
 
     emitter = createApi([], remoteApi, function (type, name, args, cb) {
@@ -55,10 +53,11 @@ module.exports = function (remoteApi, localApi, codec) {
 
     emitter.createStream = function (cb) {
       _cb = cb
-      if(first) { first = false }
-      else ws = ws.recreate(onClose)
-
-      return ws
+      if(first) {
+        first = false; return ws
+      }
+      else
+        throw new Error('one stream per rpc')
     }
 
     emitter.closed = false
