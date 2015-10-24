@@ -75,7 +75,7 @@ function createMuxrpc (remoteApi, localApi, local, id, perms, codec, legacy) {
 }
 
 module.exports = function (remoteApi, localApi, codec) {
-  if(arguments > 3)
+  if(arguments.length > 3)
     return createMuxrpc.apply(this, arguments)
   return function (local, perms, id) {
     return createMuxrpc(remoteApi, localApi, local, id, perms, codec, true)
