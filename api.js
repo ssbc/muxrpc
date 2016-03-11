@@ -1,6 +1,7 @@
 'use strict';
 var EventEmitter = require('events').EventEmitter
 var u = require('./util')
+var explain = require('explain-error')
 
 function isFunction (f) {
   return 'function' === typeof f
@@ -11,7 +12,7 @@ function isObject (o) {
 }
 
 function noop (err) {
-  if (err) throw err
+  if (err) throw explain(err, 'callback not provided')
 }
 
 module.exports = function (path, remoteApi, _remoteCall) {

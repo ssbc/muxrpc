@@ -125,7 +125,6 @@ exports.errorAsStream = function (type, err) {
 
 
 exports.errorAsStreamOrCb = function (type, err, cb) {
-  console.log('EaS', type, err, err.stack)
   return (
       isRequest(type) ? cb(err)
     : isSource(type)  ? pull.error(err)
@@ -142,3 +141,4 @@ exports.pipeToStream = function (type, _stream, stream) {
   else if (isDuplex(type))
     pull(_stream, stream, _stream)
 }
+

@@ -4,6 +4,8 @@ var pull         = require('pull-stream')
 var pullWeird    = require('./pull-weird')
 var goodbye      = require('pull-goodbye')
 var u            = require('./util')
+var explain      = require('explain-error')
+
 function isFunction (f) {
   return 'function' === typeof f
 }
@@ -43,7 +45,7 @@ module.exports = function initStream (localCall, codec, onClose) {
       try {
         value = localCall('async', name, args)
       } catch (err) {
-        if(inCB || called) throw err
+        if(inCB || called) throw explain(err, 'no callback provided to muxrpc async funtion')
         return cb(err)
       }
 
@@ -74,12 +76,12 @@ module.exports = function initStream (localCall, codec, onClose) {
           err ? u.errorAsStream(type, err) : value
         )
 
-        if(isSource(type))
-          _stream(err ? pull.error(err) : value)
-        else if (isSink(type))
-          (err ? abortSink(err) : value)(_stream)
-        else if (isDuplex(type))
-          pull(_stream, err ? abortDuplex(err) : value, _stream)
+//        if(isSource(type))
+//          _stream(err ? pull.error(err) : value)
+//        else if (isSink(type))
+//          (err ? abortSink(err) : value)(_stream)
+//        else if (isDuplex(type))
+//          pull(_stream, err ? abortDuplex(err) : value, _stream)
       }
     },
 
@@ -133,7 +135,7 @@ module.exports = function initStream (localCall, codec, onClose) {
 
     ps.close(function (err) {
       if(cb) cb(err)
-      else if(err) throw err
+      else if(err) throw explain(err, 'no callback provided for muxrpc close')
     })
 
     return this
@@ -142,5 +144,6 @@ module.exports = function initStream (localCall, codec, onClose) {
 
   return ws
 }
+
 
 
