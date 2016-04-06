@@ -5,7 +5,7 @@ var u            = require('./util')
 module.exports = 
 
 function createLocalCall(local, localApi, perms) {
-  perms = Permissions(perms)
+  var test = Permissions(perms).pre
 
   function has(type, name) {
     return type === u.get(localApi, name)
@@ -37,4 +37,5 @@ function createLocalCall(local, localApi, perms) {
     return localCall.call(this, type, name, args)
   }
 }
+
 
