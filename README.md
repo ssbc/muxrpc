@@ -84,18 +84,14 @@ The manifest is simply an object mapping to strings, or nested objects.
 If you are exposing an api over a network connection,
 then you probably want some sort of authorization system.
 `muxrpc@4` and earlier had a `rpc.permissions()` method on
-the rpc object, but this has been removed. Now you must
-provide a permissions object, which has methods `{pre, post}`.
-`pre` is called with the path and arguments before the api
-method is actually called, and if it returns false, then the
-user gets an error and the method is not called.
+the rpc object, but this has been removed.
+Now you must pass a permissions function, which is called with
+the `name` (a path) and `args`, if this function does not throw
+an error, then the call is allowed.
 
-This is much more flexible than attaching a standard permissions
-method--now all methods on the rpc object act the same (call remote
-methods) and it's possible to have a method named "permissions"
+In some cases, a simple allow/deny list is sufficient.
+A helper function, is provided, which was a part of muxrpc@4
 
-A helper module for providing permissions is provided,
-this enables you to update permissions on the fly
 ``` js
 
 var Permissions = require('muxrpc/permissions')
@@ -129,7 +125,7 @@ var rpc = muxrpc(null, api, serializer)({
     //else we ARE authorized.
     cb(null, 'ACCESS GRANTED')
   }
-})
+}, perms)
 
 //Get a stream to connect to the remote. As in the above example!
 var ss = rpc.createStream()
@@ -141,3 +137,6 @@ var ss = rpc.createStream()
 ## License
 
 MIT
+
+
+
