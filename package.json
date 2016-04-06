@@ -1,7 +1,7 @@
 {
   "name": "muxrpc",
   "description": "combined multiplexing and rpc - because a node api needs streams & async",
-  "version": "6.3.2",
+  "version": "6.3.3",
   "homepage": "https://github.com/ssbc/muxrpc",
   "repository": {
     "type": "git",
@@ -30,4 +30,3 @@
   "author": "Dominic Tarr <dominic.tarr@gmail.com> (http://dominictarr.com)",
   "license": "MIT"
 }
-
