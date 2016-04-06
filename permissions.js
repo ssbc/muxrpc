@@ -57,8 +57,8 @@ create perms:
 */
 
 module.exports = function (opts) {
+  if(isFunction(opts)) return {pre: opts}
   if(isPerms(opts)) return opts
-
   var allow = null
   var deny = {}
 
@@ -95,6 +95,7 @@ module.exports = function (opts) {
     //TODO
   }
 
+  //alias for pre, used in tests.
   perms.test = function (name, args) {
     return perms.pre(name, args)
   }
@@ -105,3 +106,4 @@ module.exports = function (opts) {
 
   return perms
 }
+
