@@ -32,7 +32,7 @@ function createLocalCall(local, localApi, perms) {
   }
 
   return function (type, name, args) {
-    var err = perms.pre(name)
+    var err = perms.pre(name, args)
     if(err) throw err
     return localCall.call(this, type, name, args)
   }
