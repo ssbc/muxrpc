@@ -30,9 +30,9 @@ module.exports = function initStream (localCall, codec, onClose) {
 
   var ps = PacketStream({
     message: function (msg) {
-      if(isString(msg)) return
-      if(msg.length > 0 && isString(msg[0]))
-        localCall('msg', 'emit', msg)
+//      if(isString(msg)) return
+//      if(msg.length > 0 && isString(msg[0]))
+//        localCall('msg', 'emit', msg)
     },
     request: function (opts, cb) {
       var name = opts.name, args = opts.args
