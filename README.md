@@ -35,8 +35,11 @@ var server = MRPC(null, api) ({
   }
 })
 
-var a = client.createStream()
+// pass in a cb for the stream end event
+var a = client.createStream(console.log.bind(console, 'stream is closed'))
 var b = server.createStream()
+// or subscribe to the 'closed' event
+b.once('closed', console.log.bind(console, 'stream is closed'))
 
 pull(a, b, a) //pipe together
 
