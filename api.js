@@ -15,7 +15,7 @@ function noop (err) {
   if (err) throw explain(err, 'callback not provided')
 }
 
-module.exports = function (path, remoteApi, _remoteCall) {
+module.exports = function (path, remoteApi, bootstrap, _remoteCall) {
 
   var emitter = new EventEmitter()
 
@@ -29,8 +29,8 @@ module.exports = function (path, remoteApi, _remoteCall) {
     return value
   }
 
-  //add all the api methods to emitter recursively
-  ;(function recurse (obj, api, path) {
+  //add all the api methods to the emitter recursively
+  var recurse = function (obj, api, path) {
     for(var name in api) (function (name, type) {
       var _path = path ? path.concat(name) : [name]
       obj[name] =
@@ -41,11 +41,32 @@ module.exports = function (path, remoteApi, _remoteCall) {
           }
     })(name, api[name])
     return obj
-  })(emitter, remoteApi, path)
+  }
+
+  emitter.bootstrap = function (cb) {
+    if (!cb)
+      cb = noop
+
+    if (bootstrap) {
+      remoteCall('async', 'manifest', [function (err, remote) {
+        if(err)
+          return cb(err)
+        recurse(emitter, remote, path)
+        cb(null, remote)
+      }])
+    }
+  }
+
+  if (bootstrap) {
+    remoteApi['manifest'] = function () {
+      return remoteCall('async', 'manifest', [].slice.call(arguments))
+    }
+  } else {
+    recurse(emitter, remoteApi, path)
+  }
 
   //legacy local emit, from when remote emit was supported.
   emitter._emit = emitter.emit
 
   return emitter
 }
-

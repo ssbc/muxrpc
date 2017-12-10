@@ -6,6 +6,11 @@ var createApi    = require('./api')
 var createLocalCall = require('./local-api')
 
 function createMuxrpc (remoteApi, localApi, local, id, perms, codec, legacy) {
+  var bootstrap
+  if (!localApi && !remoteApi) {
+    bootstrap = true
+  }
+
   localApi = localApi || {}
   remoteApi = remoteApi || {}
   var emitter
@@ -13,7 +18,6 @@ function createMuxrpc (remoteApi, localApi, local, id, perms, codec, legacy) {
 
   //pass the manifest to the permissions so that it can know
   //what something should be.
-
   var _cb, ws
   var context = {
       _emit: function (event, value) {
@@ -35,7 +39,7 @@ function createMuxrpc (remoteApi, localApi, local, id, perms, codec, legacy) {
     }
   )
 
-  emitter = createApi([], remoteApi, function (type, name, args, cb) {
+  emitter = createApi([], remoteApi, bootstrap, function (type, name, args, cb) {
     if(ws.closed) throw new Error('stream is closed')
     return ws.remoteCall(type, name, args, cb)
   })
@@ -71,7 +75,6 @@ function createMuxrpc (remoteApi, localApi, local, id, perms, codec, legacy) {
   }
 
   return emitter
-
 }
 
 module.exports = function (remoteApi, localApi, codec) {
@@ -81,4 +84,3 @@ module.exports = function (remoteApi, localApi, codec) {
     return createMuxrpc(remoteApi, localApi, local, id, perms, codec, true)
   }
 }
-
