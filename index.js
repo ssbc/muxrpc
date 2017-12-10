@@ -39,10 +39,10 @@ function createMuxrpc (remoteApi, localApi, local, id, perms, codec, legacy) {
     }
   )
 
-  emitter = createApi([], remoteApi, bootstrap, function (type, name, args, cb) {
+  emitter = createApi([], remoteApi, function (type, name, args, cb) {
     if(ws.closed) throw new Error('stream is closed')
     return ws.remoteCall(type, name, args, cb)
-  })
+  }, bootstrap)
 
   if(legacy) {
     Object.__defineGetter__.call(emitter, 'id', function () {

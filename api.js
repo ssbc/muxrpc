@@ -15,7 +15,7 @@ function noop (err) {
   if (err) throw explain(err, 'callback not provided')
 }
 
-module.exports = function (path, remoteApi, bootstrap, _remoteCall) {
+module.exports = function (path, remoteApi, _remoteCall, bootstrap) {
 
   var emitter = new EventEmitter()
 
