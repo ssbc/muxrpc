@@ -16,13 +16,17 @@ var api = {
 
 tape('emit an event from the called api function', async function (t) {
 
-  t.plan(3)
+  t.plan(5)
 
   var bob = Muxrpc(null, manifest)  (api)
-  var alice = Muxrpc() ()
+  var cb = function (err, val) {
+    t.notOk(err)
+    t.deepEqual(manifest, val)
+  }
+
+  var alice = Muxrpc(cb) ()
   var as = alice.createStream()
   pull(as, bob.createStream(), as)
-  alice.bootstrap(() => {})
 
   bob.id = 'Alice'
 

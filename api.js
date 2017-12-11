@@ -43,24 +43,17 @@ module.exports = function (path, remoteApi, _remoteCall, bootstrap) {
     return obj
   }
 
-  emitter.bootstrap = function (cb) {
-    if (!cb)
-      cb = noop
-
-    if (bootstrap) {
-      remoteCall('async', 'manifest', [function (err, remote) {
-        if(err)
-          return cb(err)
-        recurse(emitter, remote, path)
-        cb(null, remote)
-      }])
-    }
-  }
-
   if (bootstrap) {
     remoteApi['manifest'] = function () {
       return remoteCall('async', 'manifest', [].slice.call(arguments))
     }
+
+    remoteCall('async', 'manifest', [function (err, remote) {
+      if(err)
+        return bootstrap(err)
+      recurse(emitter, remote, path)
+      bootstrap(null, remote)
+    }])
   } else {
     recurse(emitter, remoteApi, path)
   }

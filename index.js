@@ -7,8 +7,9 @@ var createLocalCall = require('./local-api')
 
 function createMuxrpc (remoteApi, localApi, local, id, perms, codec, legacy) {
   var bootstrap
-  if (!localApi && !remoteApi) {
-    bootstrap = true
+  if ('function' === typeof remoteApi) {
+    bootstrap = remoteApi
+    remoteApi = {}
   }
 
   localApi = localApi || {}

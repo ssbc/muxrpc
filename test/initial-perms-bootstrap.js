@@ -62,21 +62,15 @@ function createServerAPI (store) {
   return rpc = mux(null, api, id)(session, {allow: ['manifest', 'get']})
 }
 
-function createClientAPI() {
-  return mux(null, null, id)()
+function noop () {}
+
+function createClientAPI(cb) {
+  return mux(cb, null, id)()
 }
 
 tape('secure rpc', async function (t) {
 
-  var server = createServerAPI(store)
-  var client = createClientAPI()
-
-  var ss = server.createStream()
-  var cs = client.createStream()
-
-  pull(cs, ss, cs)
-
-  client.bootstrap(() => {
+  var afterBootstrap = function () {
     cont.para([
       function (cb) {
         client.get('foo', function (err) {
@@ -101,5 +95,13 @@ tape('secure rpc', async function (t) {
     ])(function (err) {
       t.end()
     })
-  })
+  }
+
+  var server = createServerAPI(store)
+  var client = createClientAPI(afterBootstrap)
+
+  var ss = server.createStream()
+  var cs = client.createStream()
+
+  pull(cs, ss, cs)
 })
