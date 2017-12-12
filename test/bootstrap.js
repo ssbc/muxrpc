@@ -16,12 +16,11 @@ var api = {
 
 tape('emit an event from the called api function', async function (t) {
 
-  t.plan(5)
+  t.plan(4)
 
   var bob = Muxrpc(null, manifest)  (api)
   var cb = function (err, val) {
     t.notOk(err)
-    t.deepEqual(manifest, val)
   }
 
   var alice = Muxrpc(cb) ()
