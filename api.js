@@ -52,7 +52,7 @@ module.exports = function (path, remoteApi, _remoteCall, bootstrap) {
       if(err)
         return bootstrap(err)
       recurse(emitter, remote, path)
-      bootstrap(null, emitter)
+      bootstrap(null, remote, emitter)
     }])
   } else {
     recurse(emitter, remoteApi, path)
