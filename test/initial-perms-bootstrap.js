@@ -68,7 +68,7 @@ function createClientAPI(cb) {
   return mux(cb, null, id)()
 }
 
-tape('secure rpc', async function (t) {
+tape('secure rpc', function (t) {
 
   var afterBootstrap = function () {
     cont.para([

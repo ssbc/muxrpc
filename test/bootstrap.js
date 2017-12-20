@@ -14,7 +14,7 @@ var api = {
   }
 }
 
-tape('emit an event from the called api function', async function (t) {
+tape('emit an event from the called api function', function (t) {
 
   t.plan(6)
 
