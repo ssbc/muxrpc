@@ -135,11 +135,40 @@ var ss = rpc.createStream()
 
 ```
 
+## bootstrapping
 
+sometimes you don't know the remote manifest yet. if you pass a callback
+instead of `remoteApi` a an async method `manifest` is called on the remote
+which should return a manifest. This then used as the remote manifest
+and the callback is called.
+
+``` js
+
+var manifest = { hello: 'sync', manifest: 'sync' }
+
+var bob = Muxrpc(null, manifest)  ({
+  hello: function (n) {
+    if(this._emit) this._emit('hello', n)
+    console.log('hello from ' + this.id)
+    return n + ':' + this.id
+  },
+  manifest: function () {
+    return manifest
+  }
+})
+
+var alice = Muxrpc(function (err, alice) {
+  //alice now knows the bob's api
+})
+var as = alice.createStream()
+pull(as, bob.createStream(), as)
+```
 
 ## License
 
 MIT
+
+
 
 
 
