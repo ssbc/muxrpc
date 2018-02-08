@@ -14,36 +14,79 @@ function delay(fun) {
 
 var client = {
   echo   : 'duplex',
+  hello  : 'async',
+  read   : 'source',
+  write  : 'sink'
 }
 
 module.exports = function (codec) {
 
-tape('close after both sides of a duplex stream ends', function (t) {
+function testPair(name,fn) {
+  tape('missing api:'+name, function (t) {
+    var A = mux(client, null, codec) ()
+    var B = mux(null, client, codec) ({})
 
-  var A = mux(client, null, codec) ()
-  var B = mux(null, client, codec) ({
+    var bs = B.createStream()
+    var as = A.createStream()
+
+    pull(as, bs, as)
+
+    fn(t, A, B)
   })
+}
 
-  var bs = B.createStream()
-  var as = A.createStream()
+testPair('async', function (t, A) {
+  A.hello(function (err) {
+    t.ok(err)
+    t.end()
+  })
+})
 
+testPair('source', function (t, A) {
+  pull(
+    A.read(),
+    pull.drain(null, function (err) {
+      t.ok(err)
+      t.end()
+    })
+  )
+})
+
+testPair('sink', function (t, A) {
+  var n = 0
+  pull(
+    function (abort, cb) {
+      if(abort) {
+        console.log(abort)
+        t.end()
+      }
+      else
+        cb(null, n++)
+    },
+    A.write()
+  )
+})
+
+testPair('duplex', function (t, A) {
+  var c = 2
   var source = Pushable()
-
+  
   pull(
     function (err, cb) {
       if(!err) setTimeout(function () { cb(null, Date.now()) })
-      else console.log('ERROR', err)
+      else {
+        t.ok(true, 'aborted')
+        if(!--c) t.end()
+      }
     },
     A.echo(function (err) {
       console.error('caught err')
     }),
     pull.collect(function (err, ary) {
       t.ok(err)
-      t.end()
+      if(!--c) t.end()
     })
   )
-
-  pull(as, bs, as)
 
 })
 
@@ -53,11 +96,4 @@ tape('close after both sides of a duplex stream ends', function (t) {
 }
 
 if(!module.parent) module.exports(function (e) { return e })
-
-
-
-
-
-
-
 
