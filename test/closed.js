@@ -23,7 +23,7 @@ module.exports = function(serializer) {
     })
 
     var s = A.createStream()
-    pull(s, pull.through(console.log), B.createStream(), pull.through(console.log), s)
+    pull(s, B.createStream(), s)
 
     A.hello('world', function (err, value) {
       if(err) throw err
@@ -32,8 +32,8 @@ module.exports = function(serializer) {
 
       A.close(function (err) {
         if (err) throw err
+        console.log('closed')
         A.hello('world', function (err, value) {
-          console.log(err)
           t.ok(err)
           t.end()
         })
@@ -41,64 +41,6 @@ module.exports = function(serializer) {
     })
 
   })
-
-  tape('source handle closed gracefully', function (t) {
-
-    var A = mux(client, null, serializer) ()
-    var B = mux(null, client, serializer) ({
-      stuff: function (b) {
-        return pull.values([1, 2, 3, 4, 5].map(function (a) {
-          return a * b
-        }))
-      }
-    })
-
-    var s = A.createStream()
-    pull(s, pull.through(console.log), B.createStream(), pull.through(console.log), s)
-
-    pull(A.stuff(5), pull.collect(function (err, ary) {
-      if(err) throw err
-      console.log(ary)
-      t.deepEqual(ary, [5, 10, 15, 20, 25])
-
-      A.close(function (err) {
-        if (err) throw err
-        pull(A.stuff(5), pull.collect(function (err, ary) {
-          t.ok(err)
-          console.log(err)
-          t.end()
-        }))
-      })
-    }))
-
-  })
-
-  tape('sink handle closed gracefully', function (t) {
-
-    var A = mux(client, null, serializer) ()
-    var B = mux(null, client, serializer) ({
-      things: function (someParam) {
-        throw "should not be called"
-      }
-    })
-
-    var s = A.createStream()
-    pull(s, pull.through(console.log), B.createStream(), pull.through(console.log), s)
-    A.close(function (err) {
-      if (err) throw err
-      pull(pull.values([1,2,3,4,5]), A.things(5))
-
-      // sinks are hard to test
-      // once closed, the sink (A.things) just aborts early
-      // the creator of the sink (this block) has no cb after that abort
-      // so we'll just make sure 100ms passes without anything exploding
-
-      setTimeout(function () {
-        t.end()
-      }, 100)
-    })
-  })
-
   tape('close twice', function (t) {
 
     var A = mux(client, null, serializer) ()
@@ -127,105 +69,8 @@ module.exports = function(serializer) {
     })
   })
 
-  tape('wait for streams to end before closing', function (t) {
-
-    var pushable = Pushable()
-    var closed = false, n = 2, drained = []
-
-    var A = mux(client, null, serializer) ()
-    var B = mux(null, client, serializer) ({
-      stuff: function () { return pushable }
-    })
-
-    var s = A.createStream()
-    pull(s, B.createStream(), s)
-
-    pull(
-      A.stuff(),
-      pull.drain(function (data) {
-        drained.push(data)
-        t.notOk(closed)
-      }, function (err) {
-        next()
-      })
-    )
-
-    B.close(function (closed) {
-      closed = true
-      next()
-    })
-
-    function next () {
-      if(--n) return
-      t.deepEqual(drained, [1,2,3])
-      t.end()
-    }
-
-    pushable.push(1)
-    setTimeout(function () {
-      //this should have already gotten through,
-      //but should not have closed yet.
-      t.deepEqual(drained, [1])
-      pushable.push(2)
-      setTimeout(function () {
-        t.deepEqual(drained, [1, 2])
-        pushable.push(3)
-        setTimeout(function () {
-          t.deepEqual(drained, [1, 2, 3])
-          pushable.end()
-        })
-      })
-    })
-  })
-
-  tape('destroy streams when close(immediate, cb) is used', function (t) {
-
-    var closed = false, n = 3, drained = []
-
-    var pushable = Pushable(function () {
-      next()
-    })
-    var A = mux(client, null, serializer) ()
-    var B = mux(null, client, serializer) ({
-      stuff: function () { return pushable }
-    })
-
-    var s = A.createStream()
-    pull(s, B.createStream(), s)
-
-    pull(
-      A.stuff(),
-      pull.drain(function (data) {
-        drained.push(data)
-        t.notOk(closed)
-      }, function (err) {
-        t.ok(err)
-        next()
-      })
-    )
-
-    function next () {
-      if(--n) return
-      t.deepEqual(drained, [1])
-      t.end()
-    }
-
-    pushable.push(1)
-    setTimeout(function () {
-      //this should have already gotten through,
-      //but should not have closed yet.
-      t.deepEqual(drained, [1])
-      B.close(true, function (closed) {
-        closed = true
-        next()
-      })
-
-      pushable.push(2)
-    })
-  })
-
-
 }
 
 if(!module.parent)
   module.exports();
+
