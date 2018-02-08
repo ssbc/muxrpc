@@ -7,7 +7,9 @@ var u            = require('./util')
 var explain      = require('explain-error')
 
 var PushMux      = require('push-mux')
-var toPull       = require('push-stream-to-pull-stream').duplex
+//var toPull       = require('push-stream-to-pull-stream')
+
+var toPull = require('./push-to-pull')
 
 function isFunction (f) {
   return 'function' === typeof f
@@ -31,7 +33,7 @@ function isStream    (t) { return isSource(t) || isSink(t) || isDuplex(t) }
 
 module.exports = function initStream (localCall, codec, onClose) {
 
-  var ps = PushMux({
+  var ps = new PushMux({
     onMessage: function (msg) {},
     onRequest: function (opts, cb) {
       var name = opts.name, args = opts.args
@@ -44,14 +46,27 @@ module.exports = function initStream (localCall, codec, onClose) {
       try {
         value = localCall('async', name, args)
       } catch (err) {
+        console.log('Value?', value, opts, err)
         if(inCB || called) throw explain(err, 'no callback provided to muxrpc async funtion')
         return cb(err)
       }
 
     },
-    onStream: function (stream, value) {
-      console.log("STREAM", stream, value)
-      throw new Error('stream: not implemented yet')
+    onStream: function (stream, data) {
+      var _stream
+      try {
+        _stream = localCall(data.type, data.name, data.args)
+      } catch (err) {
+        return stream.end(err)
+      }
+      if(data.type == 'source')
+        pull(_stream, toPull.sink(stream))
+      else if(data.type == 'sink')
+        pull(toPull.source(stream), _stream)
+      else if(data.type == 'duplex')
+        pull(_stream, toPull.duplex(stream), _stream)
+
+      //throw new Error('stream: not implemented yet')
 //      stream.read = function (data, end) {
 //        var name = data.name
 //        var type = data.type
@@ -91,7 +106,7 @@ module.exports = function initStream (localCall, codec, onClose) {
       }
   })
 
-  var ws = goodbye(toPull(ps))
+  var ws = goodbye(toPull.duplex(ps))
 
   ws = codec ? codec(ws) : ws
 
@@ -104,8 +119,9 @@ module.exports = function initStream (localCall, codec, onClose) {
     if(isRequest(type))
       return ps.request({name: name, args: args}, cb)
 
-    var ws = ps.stream(), s = pullWeird[type](ws, cb)
-    ws.write({name: name, args: args, type: type})
+    console.log({name: name, args: args, type: type}, cb)
+    var ws = ps.stream({name: name, args: args, type: type})
+    var s = toPull[type](ws, cb)
     return s
   }
 
