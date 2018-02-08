@@ -19,7 +19,7 @@ function abortStream(onAbort, onAborted) {
 }
 
 module.exports = function (serializer) {
-  tape('stream abort', function (t) {
+  tape('stream abort 1', function (t) {
     t.plan(2)
 
     var client = {
@@ -30,10 +30,9 @@ module.exports = function (serializer) {
     var B = mux(null, client, serializer) ({
       drainAbort: function (n) {
         return pull(
-          pull.take(3),
+          pull.take(n),
           pull.through(console.log),
           pull.collect(function (err, ary) {
-            console.log(ary)
             t.deepEqual(ary, [1, 2, 3])
           })
         )
@@ -50,10 +49,10 @@ module.exports = function (serializer) {
     pull(
       pull.values([1,2,3,4,5,6,7,8,9,10], function (abort) {
         t.ok(sent.length < 10, 'sent is correct')
-        t.end()
       }),
+      pull.through(console.log),
       pull.asyncMap(function (data, cb) {
-        setImmediate(function () {
+        setTimeout(function () {
           cb(null, data)
         })
       }),
@@ -62,11 +61,11 @@ module.exports = function (serializer) {
     )
 
   })
-}
 
-module.exports = function (serializer) {
-  tape('stream abort', function (t) {
+  tape('stream abort 2', function (t) {
     t.plan(2)
+    var c = 2
+
     var abortable = Abortable()
     var client = {
       drainAbort: 'sink'
@@ -76,13 +75,16 @@ module.exports = function (serializer) {
     var B = mux(null, client, serializer) ({
       drainAbort: function (n) {
         return pull(
-          pull.through(function () {
+          pull.through(function (d) {
+            console.log('receive', d)
             if(--n) return
             abortable.abort()
+          }, function (err) {
+            console.log('END', err)
           }),
           pull.collect(function (err, ary) {
-            console.log(ary)
             t.deepEqual(ary, [1, 2, 3])
+            if(!--c) t.end()
           })
         )
       }
@@ -97,9 +99,8 @@ module.exports = function (serializer) {
 
     pull(
       pull.values([1,2,3,4,5,6,7,8,9,10], function (abort) {
-        console.log(abort)
         t.ok(sent.length < 10, 'sent is correct')
-        t.end()
+        if(!--c) t.end()
       }),
       pull.asyncMap(function (data, cb) {
         setImmediate(function () {
@@ -113,5 +114,5 @@ module.exports = function (serializer) {
   })
 }
 
-
 module.exports(id)
+
