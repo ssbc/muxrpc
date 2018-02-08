@@ -41,12 +41,13 @@ module.exports = function initStream (localCall, codec, onClose) {
 
       args.push(function (err, value) {
         called = true
-        inCB = true; cb(err, value)
+        inCB = true;
+        cb(err, value)
       })
       try {
         value = localCall('async', name, args)
+        async = true
       } catch (err) {
-        console.log('Value?', value, opts, err)
         if(inCB || called) throw explain(err, 'no callback provided to muxrpc async funtion')
         return cb(err)
       }
@@ -94,16 +95,15 @@ module.exports = function initStream (localCall, codec, onClose) {
 //
 //      }
     },
-
-    close: function (err) {
-        ps = null // deallocate
-        ws.ended = true
-        if(ws.closed) return
-        ws.closed = true
-        if(onClose) {
-          var close = onClose; onClose = null; close(err)
-        }
+    onClose: function (err) {
+      ps = null // deallocate
+      ws.ended = true
+      if(ws.closed) return
+      ws.closed = true
+      if(onClose) {
+        var close = onClose; onClose = null; close(err === true ? null : err)
       }
+    }
   })
 
   var ws = goodbye(toPull.duplex(ps))
@@ -119,7 +119,6 @@ module.exports = function initStream (localCall, codec, onClose) {
     if(isRequest(type))
       return ps.request({name: name, args: args}, cb)
 
-    console.log({name: name, args: args, type: type}, cb)
     var ws = ps.stream({name: name, args: args, type: type})
     var s = toPull[type](ws, cb)
     return s
@@ -140,18 +139,27 @@ module.exports = function initStream (localCall, codec, onClose) {
     if(isFunction(err))
       cb = err, err = false
     if(!ps) return (cb && cb())
-    if(err) return ps.destroy(err), (cb && cb())
-
-    ps.close(function (err) {
-      if(cb) cb(err)
-      else if(err) throw explain(err, 'no callback provided for muxrpc close')
-    })
-
+    ps.abort(err)
+    cb && cb()
     return this
   }
   ws.closed = false
 
   return ws
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
