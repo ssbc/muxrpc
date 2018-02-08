@@ -1,13 +1,9 @@
 'use strict';
-//var PacketStream = require('packet-stream')
 var pull         = require('pull-stream')
-//var pullWeird    = require('./pull-weird')
 var goodbye      = require('pull-goodbye')
 var u            = require('./util')
 var explain      = require('explain-error')
-
 var PushMux      = require('push-mux')
-//var toPull       = require('push-stream-to-pull-stream')
 
 var toPull = require('./push-to-pull')
 
@@ -34,6 +30,7 @@ function isStream    (t) { return isSource(t) || isSink(t) || isDuplex(t) }
 module.exports = function initStream (localCall, codec, onClose) {
 
   var ps = new PushMux({
+    credit: 64*1024,
     onMessage: function (msg) {},
     onRequest: function (opts, cb) {
       var name = opts.name, args = opts.args
@@ -66,34 +63,6 @@ module.exports = function initStream (localCall, codec, onClose) {
         pull(toPull.source(stream), _stream)
       else if(data.type == 'duplex')
         pull(_stream, toPull.duplex(stream), _stream)
-
-      //throw new Error('stream: not implemented yet')
-//      stream.read = function (data, end) {
-//        var name = data.name
-//        var type = data.type
-//        var err, value
-//
-//        stream.read = null
-//
-//        if(!isStream(type))
-//          return stream.write(null, new Error('unsupported stream type:'+type))
-//
-//        //how would this actually happen?
-//        if(end) return stream.write(null, end)
-//
-//        try { value = localCall(type, name, data.args) }
-//        catch (_err) { err = _err }
-//
-//        var _stream = pullWeird[
-//          {source: 'sink', sink: 'source'}[type] || 'duplex'
-//        ](stream)
-//
-//        return u.pipeToStream(
-//          type, _stream,
-//          err ? u.errorAsStream(type, err) : value
-//        )
-//
-//      }
     },
     onClose: function (err) {
       ps = null // deallocate
@@ -124,13 +93,7 @@ module.exports = function initStream (localCall, codec, onClose) {
     return s
   }
 
-
-  //hack to work around ordering in setting ps.ended.
-  //Question: if an object has subobjects, which
-  //all have close events, should the subobjects fire close
-  //before the parent? or should parents close after?
-  //should there be a preclose event on the parent
-  //that fires when it's about to close all the children?
+  // is this used anywhere?
   ws.isOpen = function () {
     return !ps.ended
   }
@@ -147,19 +110,5 @@ module.exports = function initStream (localCall, codec, onClose) {
 
   return ws
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
