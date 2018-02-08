@@ -1,10 +1,13 @@
 'use strict';
-var PacketStream = require('packet-stream')
+//var PacketStream = require('packet-stream')
 var pull         = require('pull-stream')
-var pullWeird    = require('./pull-weird')
+//var pullWeird    = require('./pull-weird')
 var goodbye      = require('pull-goodbye')
 var u            = require('./util')
 var explain      = require('explain-error')
+
+var PushMux      = require('push-mux')
+var toPull       = require('push-stream-to-pull-stream').duplex
 
 function isFunction (f) {
   return 'function' === typeof f
@@ -28,13 +31,9 @@ function isStream    (t) { return isSource(t) || isSink(t) || isDuplex(t) }
 
 module.exports = function initStream (localCall, codec, onClose) {
 
-  var ps = PacketStream({
-    message: function (msg) {
-//      if(isString(msg)) return
-//      if(msg.length > 0 && isString(msg[0]))
-//        localCall('msg', 'emit', msg)
-    },
-    request: function (opts, cb) {
+  var ps = PushMux({
+    onMessage: function (msg) {},
+    onRequest: function (opts, cb) {
       var name = opts.name, args = opts.args
       var inCB = false, called = false, async = false, value
 
@@ -50,39 +49,35 @@ module.exports = function initStream (localCall, codec, onClose) {
       }
 
     },
-    stream: function (stream) {
-      stream.read = function (data, end) {
-        var name = data.name
-        var type = data.type
-        var err, value
-
-        stream.read = null
-
-        if(!isStream(type))
-          return stream.write(null, new Error('unsupported stream type:'+type))
-
-        //how would this actually happen?
-        if(end) return stream.write(null, end)
-
-        try { value = localCall(type, name, data.args) }
-        catch (_err) { err = _err }
-
-        var _stream = pullWeird[
-          {source: 'sink', sink: 'source'}[type] || 'duplex'
-        ](stream)
-
-        return u.pipeToStream(
-          type, _stream,
-          err ? u.errorAsStream(type, err) : value
-        )
-
-//        if(isSource(type))
-//          _stream(err ? pull.error(err) : value)
-//        else if (isSink(type))
-//          (err ? abortSink(err) : value)(_stream)
-//        else if (isDuplex(type))
-//          pull(_stream, err ? abortDuplex(err) : value, _stream)
-      }
+    onStream: function (stream, value) {
+      console.log("STREAM", stream, value)
+      throw new Error('stream: not implemented yet')
+//      stream.read = function (data, end) {
+//        var name = data.name
+//        var type = data.type
+//        var err, value
+//
+//        stream.read = null
+//
+//        if(!isStream(type))
+//          return stream.write(null, new Error('unsupported stream type:'+type))
+//
+//        //how would this actually happen?
+//        if(end) return stream.write(null, end)
+//
+//        try { value = localCall(type, name, data.args) }
+//        catch (_err) { err = _err }
+//
+//        var _stream = pullWeird[
+//          {source: 'sink', sink: 'source'}[type] || 'duplex'
+//        ](stream)
+//
+//        return u.pipeToStream(
+//          type, _stream,
+//          err ? u.errorAsStream(type, err) : value
+//        )
+//
+//      }
     },
 
     close: function (err) {
@@ -96,9 +91,7 @@ module.exports = function initStream (localCall, codec, onClose) {
       }
   })
 
-  var ws = goodbye(pullWeird(ps, function (_) {
-    //this error will be handled in PacketStream.close
-  }))
+  var ws = goodbye(toPull(ps))
 
   ws = codec ? codec(ws) : ws
 
@@ -144,6 +137,5 @@ module.exports = function initStream (localCall, codec, onClose) {
 
   return ws
 }
-
 
 
