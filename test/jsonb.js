@@ -6,11 +6,10 @@ var codec = function(stream) {
 }
 
 require('./async')(codec)
+require('./abort')(codec)
+require('./closed')(codec)
+require('./missing')(codec)
 
-// YOLO
 
-//require('./abort')(codec)
-//require('./closed')(codec)
-//require('./emit')(codec)
-//require('./stream-end')(codec)
-//
+
+
