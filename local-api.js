@@ -4,11 +4,11 @@ var u            = require('./util')
 
 module.exports = 
 
-function createLocalCall(local, localApi, perms) {
+function createLocalCall(api, manifest, perms) {
   perms = Permissions(perms)
 
   function has(type, name) {
-    return type === u.get(localApi, name)
+    return type === u.get(manifest, name)
   }
 
   function localCall(type, name, args) {
@@ -20,7 +20,7 @@ function createLocalCall(local, localApi, perms) {
     if(type === 'async')
       if(has('sync', name)) {
         var cb = args.pop(), value
-        try { value = u.get(local, name).apply(this, args) }
+        try { value = u.get(api, name).apply(this, args) }
         catch (err) { return cb(err) }
         return cb(null, value)
       }
@@ -28,7 +28,7 @@ function createLocalCall(local, localApi, perms) {
     if (!has(type, name))
       throw new Error('no '+type+':'+name)
 
-    return u.get(local, name).apply(this, args)
+    return u.get(api, name).apply(this, args)
   }
 
   return function (type, name, args) {
@@ -37,5 +37,4 @@ function createLocalCall(local, localApi, perms) {
     return localCall.call(this, type, name, args)
   }
 }
-
 

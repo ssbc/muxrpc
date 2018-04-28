@@ -5,15 +5,15 @@ var initStream   = require('./stream')
 var createApi    = require('./api')
 var createLocalCall = require('./local-api')
 
-function createMuxrpc (remoteApi, localApi, local, id, perms, codec, legacy) {
+function createMuxrpc (remoteManifest, localManifest, localApi, id, perms, codec, legacy) {
   var bootstrap
-  if ('function' === typeof remoteApi) {
-    bootstrap = remoteApi
-    remoteApi = {}
+  if ('function' === typeof remoteManifest) {
+    bootstrap = remoteManifest
+    remoteManifest = {}
   }
 
-  localApi = localApi || {}
-  remoteApi = remoteApi || {}
+  localManifest = localManifest || {}
+  remoteManifest = remoteManifest || {}
   var emitter
   if(!codec) codec = PSC
 
@@ -29,7 +29,7 @@ function createMuxrpc (remoteApi, localApi, local, id, perms, codec, legacy) {
     }
 
   var ws = initStream(
-    createLocalCall(local, localApi, perms).bind(context),
+    createLocalCall(localApi, localManifest, perms).bind(context),
     codec, function (err) {
       if(emitter.closed) return
       emitter.closed = true
@@ -40,7 +40,7 @@ function createMuxrpc (remoteApi, localApi, local, id, perms, codec, legacy) {
     }
   )
 
-  emitter = createApi([], remoteApi, function (type, name, args, cb) {
+  emitter = createApi([], remoteManifest, function (type, name, args, cb) {
     if(ws.closed) throw new Error('stream is closed')
     return ws.remoteCall(type, name, args, cb)
   }, bootstrap)
@@ -78,10 +78,11 @@ function createMuxrpc (remoteApi, localApi, local, id, perms, codec, legacy) {
   return emitter
 }
 
-module.exports = function (remoteApi, localApi, codec) {
+module.exports = function (remoteManifest, localManifest, codec) {
   if(arguments.length > 3)
     return createMuxrpc.apply(this, arguments)
   return function (local, perms, id) {
-    return createMuxrpc(remoteApi, localApi, local, id, perms, codec, true)
+    return createMuxrpc(remoteManifest, localManifest, local, id, perms, codec, true)
   }
 }
+

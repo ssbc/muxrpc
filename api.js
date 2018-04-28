@@ -15,7 +15,7 @@ function noop (err) {
   if (err) throw explain(err, 'callback not provided')
 }
 
-module.exports = function (path, remoteApi, _remoteCall, bootstrap) {
+module.exports = function (path, manifest, _remoteCall, bootstrap) {
 
   var emitter = new EventEmitter()
 
@@ -51,7 +51,7 @@ module.exports = function (path, remoteApi, _remoteCall, bootstrap) {
       bootstrap(null, remote, emitter)
     }])
   } else {
-    recurse(emitter, remoteApi, path)
+    recurse(emitter, manifest, path)
   }
 
   //legacy local emit, from when remote emit was supported.
