@@ -30,8 +30,8 @@ module.exports = function (path, manifest, _remoteCall, bootstrap) {
   }
 
   //add all the api methods to the emitter recursively
-  function recurse (obj, api, path) {
-    for(var name in api) (function (name, type) {
+  function recurse (obj, manifest, path) {
+    for(var name in manifest) (function (name, type) {
       var _path = path ? path.concat(name) : [name]
       obj[name] =
           isObject(type)
@@ -39,7 +39,7 @@ module.exports = function (path, manifest, _remoteCall, bootstrap) {
         : function () {
             return remoteCall(type, _path, [].slice.call(arguments))
           }
-    })(name, api[name])
+    })(name, manifest[name])
     return obj
   }
 
