@@ -1,5 +1,4 @@
 'use strict';
-var EventEmitter = require('events').EventEmitter
 var u = require('./util')
 var explain = require('explain-error')
 
@@ -30,9 +29,9 @@ function recurse (obj, manifest, path, remoteCall) {
 }
 
 
-module.exports = function (path, manifest, _remoteCall, bootstrap) {
+module.exports = function (obj, manifest, _remoteCall, bootstrap) {
 
-  var emitter = new EventEmitter()
+  obj = obj || {}
 
   function remoteCall(type, name, args) {
     var cb = isFunction (args[args.length - 1]) ? args.pop() : noop
@@ -49,16 +48,13 @@ module.exports = function (path, manifest, _remoteCall, bootstrap) {
     remoteCall('async', 'manifest', [function (err, remote) {
       if(err)
         return bootstrap(err)
-      recurse(emitter, remote, path, remoteCall)
-      bootstrap(null, remote, emitter)
+      recurse(obj, remote, null, remoteCall)
+      bootstrap(null, remote, obj)
     }])
   } else {
-    recurse(emitter, manifest, path, remoteCall)
+    recurse(obj, manifest, null, remoteCall)
   }
 
-  //legacy local emit, from when remote emit was supported.
-  emitter._emit = emitter.emit
-
-  return emitter
+  return obj
 }
 

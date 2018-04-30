@@ -4,6 +4,7 @@ var u            = require('./util')
 var initStream   = require('./stream')
 var createApi    = require('./api')
 var createLocalCall = require('./local-api')
+var EventEmitter = require('events').EventEmitter
 
 function createMuxrpc (remoteManifest, localManifest, localApi, id, perms, codec, legacy) {
   var bootstrap
@@ -14,7 +15,7 @@ function createMuxrpc (remoteManifest, localManifest, localApi, id, perms, codec
 
   localManifest = localManifest || {}
   remoteManifest = remoteManifest || {}
-  var emitter
+  var emitter = new EventEmitter()
   if(!codec) codec = PSC
 
   //pass the manifest to the permissions so that it can know
@@ -40,10 +41,13 @@ function createMuxrpc (remoteManifest, localManifest, localApi, id, perms, codec
     }
   )
 
-  emitter = createApi([], remoteManifest, function (type, name, args, cb) {
+  createApi(emitter, remoteManifest, function (type, name, args, cb) {
     if(ws.closed) throw new Error('stream is closed')
     return ws.remoteCall(type, name, args, cb)
   }, bootstrap)
+
+  //legacy local emit, from when remote emit was supported.
+  emitter._emit = emitter.emit
 
   if(legacy) {
     Object.__defineGetter__.call(emitter, 'id', function () {
