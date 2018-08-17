@@ -85,10 +85,10 @@ module.exports = function (opts) {
   perms.pre = function (name, args) {
     name = isArray(name) ? name : [name]
     if(allow && !u.prefix(allow, name))
-      return new Error('method:'+name + ' is not on whitelist')
+      return new Error('method:'+name + ' is not in list of allowed methods')
 
     if(deny && u.prefix(deny, name))
-      return new Error('method:'+name + ' is on blacklist')
+      return new Error('method:'+name + ' is on list of disallowed methods')
   }
 
   perms.post = function (err, value) {
