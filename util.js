@@ -105,6 +105,19 @@ function isAsync     (t) { return 'async'  === t }
 function isRequest   (t) { return isSync(t) || isAsync(t) }
 function isStream    (t) { return isSource(t) || isSink(t) || isDuplex(t) }
 
+function redactError (err) {
+  console.error('Redacted error from muxrpc:', err)
+
+  if (err instanceof Error) {
+    const redacted = new Error()
+    redacted.name = err.name
+    delete redacted.stack
+    return redacted
+  } else {
+    return err
+  }
+}
+
 function abortSink (err) {
   return function (read) {
     read(err || true, function () {})
@@ -116,20 +129,21 @@ function abortDuplex (err) {
 }
 
 exports.errorAsStream = function (type, err) {
+  const redacted = redactError(err)
   return (
-      isSource(type)  ? pull.error(err)
-    : isSink(type)    ? abortSink(err)
-    :                   abortDuplex(err)
+      isSource(type)  ? pull.error(redacted)
+    : isSink(type)    ? abortSink(redacted)
+    :                   abortDuplex(redacted)
   )
 }
 
-
 exports.errorAsStreamOrCb = function (type, err, cb) {
+  const redacted = redactError(err)
   return (
-      isRequest(type) ? cb(err)
-    : isSource(type)  ? pull.error(err)
-    : isSink(type)    ? abortSink(err)
-    :                   cb(err), abortDuplex(err)
+      isRequest(type) ? cb(redacted)
+    : isSource(type)  ? pull.error(redacted)
+    : isSink(type)    ? abortSink(redacted)
+    :                   cb(redacted), abortDuplex(redacted)
   )
 }
 

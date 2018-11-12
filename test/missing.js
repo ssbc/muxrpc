@@ -31,8 +31,13 @@ tape('close after both sides of a duplex stream ends', function (t) {
 
   pull(
     function (err, cb) {
-      if(!err) setTimeout(function () { cb(null, Date.now()) })
-      else console.log('ERROR', err)
+      if(!err) {
+        setTimeout(() => cb(null, Date.now()))
+      } else {
+        t.notOk(err.message, 'error message is redacted')
+        t.notOk(err.stack, 'error stack is redacted')
+        console.log('ERROR', err)
+      }
     },
     A.echo(function (err) {
       console.error('caught err')
