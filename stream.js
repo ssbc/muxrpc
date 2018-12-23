@@ -35,6 +35,8 @@ module.exports = function initStream (localCall, codec, onClose) {
 //        localCall('msg', 'emit', msg)
     },
     request: function (opts, cb) {
+      if(!Array.isArray(opts.args))
+        return cb(new Error('invalid request, args should be array, was:'+JSON.stringify(opts)))
       var name = opts.name, args = opts.args
       var inCB = false, called = false, async = false, value
 
