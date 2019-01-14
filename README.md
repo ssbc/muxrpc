@@ -115,7 +115,7 @@ var rpc = muxrpc(null, api, serializer)({
   bar: function (val, cb) {
     cb(null, {okay: 'bar'})
   },
-  auth: function (pass) {
+  auth: function (pass, cb) {
     //implement an auth function that sets the permissions,
     //using allow or deny lists.
 
