@@ -5,7 +5,6 @@ var u            = require('./util')
 module.exports = 
 
 function createLocalCall(api, manifest, perms) {
-//  if(!perms) throw new Error('perms is not defined')
   perms = Permissions(perms)
 
   function has(type, name) {
@@ -38,6 +37,4 @@ function createLocalCall(api, manifest, perms) {
     return localCall.call(this, type, name, args)
   }
 }
-
-
 
