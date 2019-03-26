@@ -141,4 +141,3 @@ exports.pipeToStream = function (type, _stream, stream) {
   else if (isDuplex(type))
     pull(_stream, stream, _stream)
 }
-
