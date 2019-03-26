@@ -195,7 +195,7 @@ tape('closed is emitted when stream disconnects', function (t) {
   })
   pull(pull.empty(), A.createStream(function (err) {
     console.log(err)
-    t.notOk(err) //end of parent stream
+    t.ok(err) //end of parent stream
   }), pull.drain())
 })
 
@@ -206,7 +206,7 @@ tape('closed is emitted with error when stream errors', function (t) {
     t.notOk(err)
   })
   pull(pull.empty(), A.createStream(function (err) {
-    console.log(err)
+//    console.log(err)
     t.notOk(err) //end of parent stream
   }), pull.drain())
 })
