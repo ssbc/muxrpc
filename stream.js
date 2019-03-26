@@ -73,6 +73,9 @@ module.exports = function initStream (localCall, codec, onClose) {
           {source: 'sink', sink: 'source'}[type] || 'duplex'
         ](stream)
 
+        if(!err && !isStream(value))
+          err = new Error('did not return a stream')
+
         return u.pipeToStream(
           type, _stream,
           err ? u.errorAsStream(type, err) : value
@@ -146,6 +149,4 @@ module.exports = function initStream (localCall, codec, onClose) {
 
   return ws
 }
-
-
 
