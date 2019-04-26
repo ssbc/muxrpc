@@ -5,6 +5,20 @@ combined rpc and multiplexing, with pull-streams.
 [![build status](https://secure.travis-ci.org/ssbc/muxrpc.png)](http://travis-ci.org/ssbc/muxrpc)
 
 
+## motivation
+
+`muxrpc` aims to provide remote access to any reasonable node.js api remotely.
+this means it supports both streaming and async operations.
+[pull-streams](https://github.com/pull-stream/pull-stream) are used.
+
+It may seem at first that it would be logically cleaner to separate this into two concerns,
+multiplexing and request-response. Indeed, we did just that in [multilevel](https://github.com/juliangruber/multilevel)
+combining [mux-deumx](http://github.com/dominictarr/mux-demux) and [rpc-stream](http://github.com/dominictarr/rpc-stream)
+however, I realized that multiplexing depends on adding framing to incoming messages,
+and so does rpc. If rpc is implemented as another layer on top of multiplexing, then the rpc messages
+end up with a second layer of framing too. By implementing one protocol that supports both streams
+and rpc, we were able to have both features with only a single layer of framing.
+
 ## example
 
 ``` js
@@ -72,6 +86,11 @@ pull(client.stuff(), pull.drain(console.log))
 // 4
 // 5
 ```
+
+## protocol
+
+As indicated by the name, `muxrpc` combines both multiplexing and rpc (remote procedure call,
+i.e. request-response). The protocol is described in details in [rpc protocol section of the protocol guide](https://ssbc.github.io/scuttlebutt-protocol-guide/#rpc-protocol)
 
 ## Api: createMuxrpc (remoteManifest, localManifest, localApi, id, perms, codec, legacy) => rpc
 
@@ -207,4 +226,6 @@ pull(as, bob.createStream(), as)
 ## License
 
 MIT
+
+
 
