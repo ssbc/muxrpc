@@ -2,8 +2,8 @@
 var PSC          = require('packet-stream-codec')
 var u            = require('./util')
 var initStream   = require('./stream')
-var createApi    = require('./api')
-var createLocalCall = require('./local-api')
+var createRemoteApi    = require('./remote-api')
+var createLocalApi = require('./local-api')
 var EventEmitter = require('events').EventEmitter
 
 function createMuxrpc (remoteManifest, localManifest, localApi, id, perms, codec, legacy) {
@@ -30,7 +30,7 @@ function createMuxrpc (remoteManifest, localManifest, localApi, id, perms, codec
     }
 
   var ws = initStream(
-    createLocalCall(localApi, localManifest, perms).bind(context),
+    createLocalApi(localApi, localManifest, perms).bind(context),
     codec, function (err) {
       if(emitter.closed) return
       emitter.closed = true
@@ -41,7 +41,7 @@ function createMuxrpc (remoteManifest, localManifest, localApi, id, perms, codec
     }
   )
 
-  createApi(emitter, remoteManifest, function (type, name, args, cb) {
+  createRemoteApi(emitter, remoteManifest, function (type, name, args, cb) {
     if(ws.closed) throw new Error('stream is closed')
     return ws.remoteCall(type, name, args, cb)
   }, bootstrap)
@@ -89,4 +89,3 @@ module.exports = function (remoteManifest, localManifest, codec) {
     return createMuxrpc(remoteManifest, localManifest, local, id, perms, codec, true)
   }
 }
-
