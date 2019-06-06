@@ -12,7 +12,7 @@
     "packet-stream": "~2.0.0",
     "packet-stream-codec": "^1.1.1",
     "pull-goodbye": "0.0.2",
-    "pull-stream": "^3.2.3"
+    "pull-stream": "^3.6.10"
   },
   "devDependencies": {
     "cont": "~1.0.1",
