@@ -282,8 +282,10 @@ module.exports = function(serializer, buffers) {
   tape('cb when stream is ended', function (t) {
 
     var A = mux(client, null) ()
-    var s = A.createStream(function (_err) {
-      t.equal(_err, null)
+    var s = A.createStream(function (err) {
+//      if(err) throw err
+      t.ok(err)
+//      t.equal(err, null)
       t.end()
     })
 
@@ -292,14 +294,16 @@ module.exports = function(serializer, buffers) {
   })
 
   tape('cb when stream is aborted', function (t) {
-
+    var err = new Error('testing error')
     var A = mux(client, null) ()
     var s = A.createStream(function (_err) {
-      t.equal(_err, null)
+  //    if(_err) throw err
+      t.equal(_err, err)
+//      t.ok(err)
       t.end()
     })
 
-    s.source(true, function () {})
+    s.source(err, function () {})
   })
 
   var client2 = {
