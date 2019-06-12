@@ -187,7 +187,6 @@ module.exports = function(serializer, buffers) {
 
   tape('async - error1', function (t) {
     var A = mux(client, null) ()
-
     var s = A.createStream()
 
     A.hello('world', function (err, value) {
@@ -402,5 +401,3 @@ module.exports = function(serializer, buffers) {
 //see ./jsonb.js for tests with serialization.
 if(!module.parent)
   module.exports(function (e) { return e });
-
-

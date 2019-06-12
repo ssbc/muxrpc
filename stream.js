@@ -30,7 +30,7 @@ function isStream    (t) { return isSource(t) || isSink(t) || isDuplex(t) }
 module.exports = function initStream (localCall, codec, onClose) {
 
   var ps = new PushMux({
-    credit: 64*1024,
+    credit: 64*1024*1024, //that's a very small default window. only packets
     onMessage: function (msg) {},
     onRequest: function (opts, cb) {
       var name = opts.name, args = opts.args
@@ -77,6 +77,7 @@ module.exports = function initStream (localCall, codec, onClose) {
 
   var ws = goodbye(toPull.duplex(ps))
 
+  //used with muxrpc, this means
   ws = codec ? codec(ws) : ws
 
   ws.remoteCall = function (type, name, args, cb) {
@@ -110,5 +111,3 @@ module.exports = function initStream (localCall, codec, onClose) {
 
   return ws
 }
-
-

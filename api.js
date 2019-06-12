@@ -12,7 +12,7 @@ function isObject (o) {
 }
 
 function noop (err) {
-  if (err) throw explain(err, 'callback not provided')
+//  if (err) throw explain(err, 'callback not provided')
 }
 
 module.exports = function (path, remoteApi, _remoteCall, bootstrap) {
