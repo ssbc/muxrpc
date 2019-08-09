@@ -53,7 +53,7 @@ var client = MRPC(manifest, null) () //MRPC (remoteManifest, localManifest) (loc
 var server = MRPC(null, manifest) (api)
 ```
 now set up a server, and connect to it...
-```
+```js
 var net = require('net')
 
 net.createServer(function (stream) {
