@@ -1,2 +1,1 @@
-
-module.exports = require('./local-api')
+module.exports = require('./remote-api')
