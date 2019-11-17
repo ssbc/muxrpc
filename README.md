@@ -13,7 +13,7 @@ this means it supports both streaming and async operations.
 
 It may seem at first that it would be logically cleaner to separate this into two concerns,
 multiplexing and request-response. Indeed, we did just that in [multilevel](https://github.com/juliangruber/multilevel)
-combining [mux-deumx](http://github.com/dominictarr/mux-demux) and [rpc-stream](http://github.com/dominictarr/rpc-stream)
+combining [mux-demux](http://github.com/dominictarr/mux-demux) and [rpc-stream](http://github.com/dominictarr/rpc-stream)
 however, I realized that multiplexing depends on adding framing to incoming messages,
 and so does rpc. If rpc is implemented as another layer on top of multiplexing, then the rpc messages
 end up with a second layer of framing too. By implementing one protocol that supports both streams
