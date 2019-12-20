@@ -45,7 +45,7 @@ module.exports = function(serializer, buffers) {
       console.log(value)
       t.equal(value, 'hello, world')
 
-      var buf = new Buffer([0, 1, 2, 3, 4])
+      var buf = Buffer.from([0, 1, 2, 3, 4])
       A.goodbye(buf, function (err, buf2) {
         if (err) throw err
         console.log(b(buf2), b(buf))
@@ -73,7 +73,7 @@ module.exports = function(serializer, buffers) {
       console.log(value)
       t.equal(value, 'hello, world')
 
-      var buf = new Buffer([0, 1, 2, 3, 4])
+      var buf = Buffer.from([0, 1, 2, 3, 4])
       A.goodbye(buf).then((buf2) => {
         console.log(b(buf2), b(buf))
         t.deepEqual(b(buf2), b(buf))
@@ -85,9 +85,9 @@ module.exports = function(serializer, buffers) {
   tape('source', function (t) {
 
     var expected = [
-          new Buffer([0, 1]),
-          new Buffer([2, 3]),
-          new Buffer([4, 5])
+          Buffer.from([0, 1]),
+          Buffer.from([2, 3]),
+          Buffer.from([4, 5])
         ]
 
     var A = mux(client, null, serializer) ()
@@ -358,7 +358,7 @@ module.exports = function(serializer, buffers) {
       console.log(value)
       t.equal(value, 'hello, world')
 
-      var buf = new Buffer([0, 1, 2, 3, 4])
+      var buf = Buffer.from([0, 1, 2, 3, 4])
       A.salutations.goodbye(buf, function (err, buf2) {
         if (err) throw err
         t.deepEqual( b(buf2), b(buf))
