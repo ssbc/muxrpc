@@ -10,10 +10,6 @@ function isObject (o) {
   return o && 'object' === typeof o
 }
 
-function noop (err) {
-  if (err) throw explain(err, 'callback not provided')
-}
-
 //add all the api methods to the emitter recursively
 function recurse (obj, manifest, path, remoteCall) {
   for(var name in manifest) (function (name, type) {
@@ -29,18 +25,41 @@ function recurse (obj, manifest, path, remoteCall) {
 }
 
 
-module.exports = function (obj, manifest, _remoteCall, bootstrap) {
+function noop (err) {
+  if (err) {
+    throw explain(err, 'callback not provided')
+  }
+}
 
+module.exports = function (obj, manifest, _remoteCall, bootstrap) {
   obj = obj || {}
 
   function remoteCall(type, name, args) {
-    var cb = isFunction (args[args.length - 1]) ? args.pop() : noop
+    var cb = isFunction (args[args.length - 1])
+      ? args.pop()
+      : type.endsWith('sync')
+        ? null
+        : noop
     var value
 
-    try { value = _remoteCall(type, name, args, cb) }
-    catch(err) { return u.errorAsStreamOrCb(type, err, cb)}
+    if (typeof cb === 'function') {
+      // Callback style
+      try { value = _remoteCall(type, name, args, cb) }
+      catch(err) { return u.errorAsStreamOrCb(type, err, cb)}
 
-    return value
+      return value
+    } else {
+      // Promise style
+      return new Promise((resolve, reject) =>
+        _remoteCall(type, name, args, (err, val) => {
+          if (err) {
+            reject(err)
+          } else {
+            resolve(val)
+          }
+        })
+      )
+    }
   }
 
 
