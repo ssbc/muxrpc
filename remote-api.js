@@ -31,13 +31,18 @@ function noop (err) {
   }
 }
 
+const promiseTypes = [
+  'sync',
+  'async'
+]
+
 module.exports = function (obj, manifest, _remoteCall, bootstrap) {
   obj = obj || {}
 
   function remoteCall(type, name, args) {
     var cb = isFunction (args[args.length - 1])
       ? args.pop()
-      : type.endsWith('sync')
+      : promiseTypes.includes(type)
         ? null
         : noop
     var value
