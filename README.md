@@ -152,7 +152,7 @@ or a nested manifest.
 ## Permissions
 
 muxrpc includes a helper module for defining permissions.
-it implements a simlpe allow/deny list to define permissions for a given connection.
+it implements a simple allow/deny list to define permissions for a given connection.
 
 ``` js
 
