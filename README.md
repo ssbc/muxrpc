@@ -22,11 +22,12 @@ and rpc, we were able to have both features with only a single layer of framing.
 ## example
 
 ```js
-var MRPC = require('muxrpc')
-var pull = require('pull-stream')
+const MRPC = require('muxrpc')
+const pull = require('pull-stream')
+const toPull = require('stream-to-pull-stream')
 
 //we need a manifest of methods we wish to expose.
-var manifest = {
+const manifest = {
   //async is a normal async function
   hello: 'async',
 
@@ -37,27 +38,27 @@ var manifest = {
 }
 
 //the actual methods which the server exposes
-var api = {
-  hello: function (name, cb) {
+const api = {
+  hello(name, cb) {
     cb(null, 'hello, ' + name + '!')
   },
-  stuff: function () {
+  stuff() {
     return pull.values([1, 2, 3, 4, 5])
   }
 }
 
 //pass the manifests into the constructor, and then pass the local api object you are wrapping
 //(if there is a local api)
-var client = MRPC(manifest, null) () //MRPC (remoteManifest, localManifest) (localApi)
-var server = MRPC(null, manifest) (api)
+const client = MRPC(manifest, null) () //MRPC (remoteManifest, localManifest) (localApi)
+const server = MRPC(null, manifest) (api)
 ```
 
 now set up a server, and connect to it...
 
 ```js
-var net = require('net')
+const net = require('net')
 
-net.createServer(function (stream) {
+net.createServer(stream => {
   stream = toPull.duplex(stream) //turn into a pull-stream
   //connect the output of the net stream to the muxrpc stream
   //and then output of the muxrpc stream to the net stream
@@ -65,12 +66,13 @@ net.createServer(function (stream) {
 }).listen(8080)
 //connect a pair of duplex streams together.
 
-var stream = toPull.duplex(net.connect(8080))
-pull(stream, client.createStream(onClose), stream)
+const stream = toPull.duplex(net.connect(8080))
 
-function onClose () {
+const onClose = () => {
   console.log('connected to muxrpc server')
 }
+
+pull(stream, client.createStream(onClose), stream)
 
 // Now you can call methods like this.
 client.hello('world', function (err, value) {
@@ -83,7 +85,6 @@ client.hello('world', function (err, value) {
 client.hello('world').then((value) => {
   console.log(value)
 })
-
 
 pull(client.stuff(), pull.drain(console.log))
 // 1
@@ -158,7 +159,7 @@ or a nested manifest.
 ## Permissions
 
 muxrpc includes a helper module for defining permissions.
-it implements a simlpe allow/deny list to define permissions for a given connection.
+it implements a simple allow/deny list to define permissions for a given connection.
 
 ``` js
 
