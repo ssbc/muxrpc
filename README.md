@@ -21,8 +21,7 @@ and rpc, we were able to have both features with only a single layer of framing.
 
 ## example
 
-``` js
-
+```js
 const MRPC = require('muxrpc')
 const pull = require('pull-stream')
 const toPull = require('stream-to-pull-stream')
@@ -53,7 +52,9 @@ const api = {
 const client = MRPC(manifest, null) () //MRPC (remoteManifest, localManifest) (localApi)
 const server = MRPC(null, manifest) (api)
 ```
+
 now set up a server, and connect to it...
+
 ```js
 const net = require('net')
 
@@ -73,12 +74,16 @@ const onClose = () => {
 
 pull(stream, client.createStream(onClose), stream)
 
-//now you can call methods like this.
-
-client.hello('world', (err, value) => {
+// Now you can call methods like this.
+client.hello('world', function (err, value) {
   if(err) throw err
   console.log(value)
   // hello, world!
+})
+
+// Alternatively, you can use the promise syntax.
+client.hello('world').then((value) => {
+  console.log(value)
 })
 
 pull(client.stuff(), pull.drain(console.log))
