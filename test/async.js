@@ -208,7 +208,7 @@ module.exports = function(serializer, buffers) {
 
     var s = A.createStream()
 
-    A.hello('world', function (err, value) {
+    A.hello('world', function (err) {
       t.ok(err)
       t.end()
     })
@@ -221,7 +221,7 @@ module.exports = function(serializer, buffers) {
 
     var s = A.createStream()
 
-    A.hello('world', function (err, value) {
+    A.hello('world', function (err) {
       console.log('CB!')
       t.ok(err)
       t.end()
@@ -391,7 +391,7 @@ module.exports = function(serializer, buffers) {
 
     var A = mux(client, null, serializer)()
     var B = mux(null, client, serializer)({
-      things: function (len) {
+      things: function () {
         return function (read) {
           read(err, function () {})
         }

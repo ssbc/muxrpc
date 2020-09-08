@@ -57,8 +57,7 @@ module.exports = function (weird, _done) {
       }, function (err) {
         if(weird && !weird.writeEnd) weird.write(null, err || true)
         done && done(err)
-      })
-      (read)
+      })(read)
     }
   }
 }

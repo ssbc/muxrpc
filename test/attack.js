@@ -47,7 +47,7 @@ tape('request which is not public', function (t) {
   //create a client with a different manifest to the server.
   //create a server that 
 
-  A = createClient(t)
+  const A = createClient(t)
 
   A.get('foo', function (err, val) {
     t.ok(err)
@@ -64,7 +64,7 @@ tape('sink which is not public', function (t) {
 
   pull(
     pull.values(["ACCESS", "GRANTED"]),
-    A.write(null, function (err, ary) {
+    A.write(null, function (err) {
       t.ok(err)
       t.end()
     })

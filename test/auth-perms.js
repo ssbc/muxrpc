@@ -1,6 +1,5 @@
 var tape = require('tape')
 var pull = require('pull-stream')
-var pushable = require('pull-pushable')
 var mux = require('../')
 var cont = require('cont')
 var Permissions = require('../permissions')
@@ -31,7 +30,6 @@ var store = {
 }
 
 function createServerAPI (store) {
-  var rpc
   var name = 'nobody'
 
   //this wraps a session.
@@ -97,7 +95,7 @@ function createServerAPI (store) {
 
   session.nested = session
 
-  return rpc = mux(null, api, id)(session, perms)
+  return mux(null, api, id)(session, perms)
 }
 
 function createClientAPI() {
@@ -135,7 +133,7 @@ tape('secure rpc', function (t) {
         t.ok(err); cb()
       }))
     }
-  ])(function (err) {
+  ])(function () {
     client.login({name: 'user', pass: 'password'}, function (err, res) {
       if(err) throw err
       t.ok(res.okay)
@@ -170,7 +168,7 @@ tape('secure rpc', function (t) {
             ]); cb()
           }))
         }
-      ])(function (err) {
+      ])(function () {
           t.end()
         })
     })
@@ -250,8 +248,8 @@ tape('nested sessions', function (t) {
         t.ok(err); cb()
       }))
     }
-  ])(function (err) {
-    client.login({name: 'nested', pass: 'foofoo'}, function (err, res) {
+  ])(function () {
+    client.login({name: 'nested', pass: 'foofoo'}, function () {
       cont.para([
         function (cb) {
           client.nested.get('foo', function (err, value) {
@@ -280,7 +278,7 @@ tape('nested sessions', function (t) {
             ]); cb()
           }))
         }
-      ])(function (err) {
+      ])(function () {
           
           t.end()
         })

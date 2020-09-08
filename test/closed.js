@@ -32,7 +32,7 @@ module.exports = function(serializer) {
 
       A.close(function (err) {
         if (err) throw err
-        A.hello('world', function (err, value) {
+        A.hello('world', function (err) {
           console.log(err)
           t.ok(err)
           t.end()
@@ -63,7 +63,7 @@ module.exports = function(serializer) {
 
       A.close(function (err) {
         if (err) throw err
-        pull(A.stuff(5), pull.collect(function (err, ary) {
+        pull(A.stuff(5), pull.collect(function (err) {
           t.ok(err)
           console.log(err)
           t.end()
@@ -77,7 +77,7 @@ module.exports = function(serializer) {
 
     var A = mux(client, null, serializer) ()
     var B = mux(null, client, serializer) ({
-      things: function (someParam) {
+      things: function () {
         throw "should not be called"
       }
     })
@@ -145,12 +145,12 @@ module.exports = function(serializer) {
       pull.drain(function (data) {
         drained.push(data)
         t.notOk(closed)
-      }, function (err) {
+      }, function () {
         next()
       })
     )
 
-    B.close(function (closed) {
+    B.close(function () {
       closed = true
       next()
     })
@@ -215,7 +215,7 @@ module.exports = function(serializer) {
       //this should have already gotten through,
       //but should not have closed yet.
       t.deepEqual(drained, [1])
-      B.close(true, function (closed) {
+      B.close(true, function () {
         closed = true
         next()
       })
