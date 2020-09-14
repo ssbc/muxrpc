@@ -7,10 +7,6 @@ function isFunction (f) {
   return 'function' === typeof f
 }
 
-function join (str) {
-  return Array.isArray(str) ? str.join('.') : str
-}
-
 function toArray(str) {
   return isArray(str) ? str : str.split('.')
 }
@@ -82,7 +78,7 @@ module.exports = function (opts) {
 
   if(opts) perms(opts)
 
-  perms.pre = function (name, args) {
+  perms.pre = function (name) {
     name = isArray(name) ? name : [name]
     if(allow && !u.prefix(allow, name))
       return new Error('method:'+name + ' is not in list of allowed methods')
@@ -91,13 +87,13 @@ module.exports = function (opts) {
       return new Error('method:'+name + ' is on list of disallowed methods')
   }
 
-  perms.post = function (err, value) {
+  perms.post = function () {
     //TODO
   }
 
   //alias for pre, used in tests.
-  perms.test = function (name, args) {
-    return perms.pre(name, args)
+  perms.test = function (name) {
+    return perms.pre(name)
   }
 
   perms.get = function () {

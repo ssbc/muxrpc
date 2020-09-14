@@ -5,12 +5,6 @@ function isString (s) {
   return 'string' === typeof s
 }
 
-var isArray = Array.isArray
-
-function isObject (o) {
-  return o && 'object' === typeof o && !isArray(o)
-}
-
 function isEmpty (obj) {
   for(var k in obj) return false;
   return true
@@ -47,7 +41,7 @@ exports.get = function (obj, path) {
 }
 
 exports.prefix = function (obj, path) {
-  var value, parent = obj
+  var value
 
   for(var i = 0; i < path.length; i++) {
     var k = path[i]
@@ -55,11 +49,9 @@ exports.prefix = function (obj, path) {
     if('object' !== typeof obj) {
       return obj
     }
-    parent = obj
   }
   return 'object' !== typeof value ? !!value : false
 }
-
 
 function mkPath(obj, path) {
   for(var i in path) {
@@ -88,12 +80,12 @@ function merge (obj, _obj) {
   return obj
 }
 
-var mount = exports.mount = function (obj, path, _obj) {
+exports.mount = function (obj, path, _obj) {
   if(!Array.isArray(path))
     throw new Error('path must be array of strings')
   return merge(mkPath(obj, path), _obj)
 }
-var unmount = exports.unmount = function (obj, path) {
+exports.unmount = function (obj, path) {
   return rmPath(obj, path)
 }
 
@@ -103,7 +95,6 @@ function isDuplex    (t) { return 'duplex' === t }
 function isSync      (t) { return 'sync'  === t }
 function isAsync     (t) { return 'async'  === t }
 function isRequest   (t) { return isSync(t) || isAsync(t) }
-function isStream    (t) { return isSource(t) || isSink(t) || isDuplex(t) }
 
 function abortSink (err) {
   return function (read) {

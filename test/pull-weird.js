@@ -13,9 +13,14 @@ tape('aborts pull-weird correctly', function (t) {
   t.plan(2)
   var ps = new PacketStream({})
 
+
   pull(
     function (abort, cb) {
-      if(abort) t.ok(true)
+      if(abort) {
+        t.ok(true)
+      } else {
+        cb('the stream must flow')
+      }
     },
     Weird(ps),
     function (read) {

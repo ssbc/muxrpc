@@ -6,18 +6,6 @@ var Abortable = require('pull-abortable')
 
 function id (e) { return e }
 
-function abortStream(onAbort, onAborted) {
-  return function (read) {
-    return function (abort, cb) {
-      if(abort && onAbort) onAbort(abort)
-      read(abort, function (end, data) {
-        if(end && onAborted) onAborted(end)
-        cb(end, data)
-      })
-    }
-  }
-}
-
 module.exports = function (serializer) {
   tape('stream abort', function (t) {
     t.plan(2)
@@ -28,7 +16,7 @@ module.exports = function (serializer) {
 
     var A = mux(client, null, serializer) ()
     var B = mux(null, client, serializer) ({
-      drainAbort: function (n) {
+      drainAbort: function () {
         return pull(
           pull.take(3),
           pull.through(console.log),
@@ -48,7 +36,7 @@ module.exports = function (serializer) {
     var sent = []
 
     pull(
-      pull.values([1,2,3,4,5,6,7,8,9,10], function (abort) {
+      pull.values([1,2,3,4,5,6,7,8,9,10], function () {
         t.ok(sent.length < 10, 'sent is correct')
         t.end()
       }),

@@ -1,16 +1,6 @@
 var pull = require('pull-stream')
 var mux = require('../')
 var tape = require('tape')
-var Pushable = require('pull-pushable')
-
-function delay(fun) {
-  return function (a, b) {
-    setImmediate(function () {
-      fun(a, b)
-    })
-  }
-}
-
 
 var client = {
   echo   : 'duplex',
@@ -27,17 +17,15 @@ tape('close after both sides of a duplex stream ends', function (t) {
   var bs = B.createStream()
   var as = A.createStream()
 
-  var source = Pushable()
-
   pull(
     function (err, cb) {
       if(!err) setTimeout(function () { cb(null, Date.now()) })
       else console.log('ERROR', err)
     },
-    A.echo(function (err) {
+    A.echo(function () {
       console.error('caught err')
     }),
-    pull.collect(function (err, ary) {
+    pull.collect(function (err) {
       t.ok(err)
       t.end()
     })

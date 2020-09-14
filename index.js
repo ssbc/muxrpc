@@ -1,6 +1,5 @@
 'use strict'
 var PSC          = require('packet-stream-codec')
-var u            = require('./util')
 var initStream   = require('./stream')
 var createRemoteApi    = require('./remote-api')
 var createLocalApi = require('./local-api')
@@ -20,7 +19,7 @@ function createMuxrpc (remoteManifest, localManifest, localApi, id, perms, codec
 
   //pass the manifest to the permissions so that it can know
   //what something should be.
-  var _cb, ws
+  var _cb
   var context = {
       _emit: function (event, value) {
         emitter && emitter._emit(event, value)

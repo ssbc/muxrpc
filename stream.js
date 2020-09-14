@@ -1,6 +1,5 @@
 'use strict';
 var PacketStream = require('packet-stream')
-var pull         = require('pull-stream')
 var pullWeird    = require('./pull-weird')
 var goodbye      = require('pull-goodbye')
 var u            = require('./util')
@@ -8,14 +7,6 @@ var explain      = require('explain-error')
 
 function isFunction (f) {
   return 'function' === typeof f
-}
-
-function isString (s) {
-  return 'string' === typeof s
-}
-
-function isObject (o) {
-  return o && 'object' === typeof o
 }
 
 function isSource    (t) { return 'source' === t }
@@ -29,7 +20,7 @@ function isStream    (t) { return isSource(t) || isSink(t) || isDuplex(t) }
 module.exports = function initStream (localCall, codec, onClose) {
 
   var ps = PacketStream({
-    message: function (msg) {
+    message: function () {
 //      if(isString(msg)) return
 //      if(msg.length > 0 && isString(msg[0]))
 //        localCall('msg', 'emit', msg)
@@ -38,14 +29,14 @@ module.exports = function initStream (localCall, codec, onClose) {
       if(!Array.isArray(opts.args))
         return cb(new Error('invalid request, args should be array, was:'+JSON.stringify(opts)))
       var name = opts.name, args = opts.args
-      var inCB = false, called = false, async = false, value
+      var inCB = false, called = false
 
       args.push(function (err, value) {
         called = true
         inCB = true; cb(err, value)
       })
       try {
-        value = localCall('async', name, args)
+        localCall('async', name, args)
       } catch (err) {
         if(inCB || called) throw explain(err, 'no callback provided to muxrpc async funtion')
         return cb(err)
@@ -98,7 +89,7 @@ module.exports = function initStream (localCall, codec, onClose) {
       }
   })
 
-  var ws = goodbye(pullWeird(ps, function (_) {
+  var ws = goodbye(pullWeird(ps, function () {
     //this error will be handled in PacketStream.close
   }))
 

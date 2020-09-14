@@ -1,6 +1,5 @@
 var tape = require('tape')
 var pull = require('pull-stream')
-var pushable = require('pull-pushable')
 var mux = require('../')
 var cont = require('cont')
 
@@ -28,7 +27,6 @@ var store = {
 }
 
 function createServerAPI (store) {
-  var rpc
   var name = 'nobody'
 
   //this wraps a session.
@@ -55,7 +53,7 @@ function createServerAPI (store) {
 
   session.nested = session
 
-  return rpc = mux(null, api, id)(session, {allow: ['get']})
+  return mux(null, api, id)(session, {allow: ['get']})
 }
 
 function createClientAPI() {
@@ -93,7 +91,7 @@ tape('secure rpc', function (t) {
         t.ok(err); cb()
       }))
     }
-  ])(function (err) {
+  ])(function () {
     t.end()
   })
 
