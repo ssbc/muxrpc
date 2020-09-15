@@ -5,15 +5,29 @@ combined rpc and multiplexing, with pull-streams.
 [![build status](https://secure.travis-ci.org/ssbc/muxrpc.png)](http://travis-ci.org/ssbc/muxrpc)
 
 
+## motivation
+
+`muxrpc` aims to provide remote access to any reasonable node.js api remotely.
+this means it supports both streaming and async operations.
+[pull-streams](https://github.com/pull-stream/pull-stream) are used.
+
+It may seem at first that it would be logically cleaner to separate this into two concerns,
+multiplexing and request-response. Indeed, we did just that in [multilevel](https://github.com/juliangruber/multilevel)
+combining [mux-demux](http://github.com/dominictarr/mux-demux) and [rpc-stream](http://github.com/dominictarr/rpc-stream)
+however, I realized that multiplexing depends on adding framing to incoming messages,
+and so does rpc. If rpc is implemented as another layer on top of multiplexing, then the rpc messages
+end up with a second layer of framing too. By implementing one protocol that supports both streams
+and rpc, we were able to have both features with only a single layer of framing.
+
 ## example
 
-``` js
-
-var MRPC = require('muxrpc')
-var pull = require('pull-stream')
+```js
+const MRPC = require('muxrpc')
+const pull = require('pull-stream')
+const toPull = require('stream-to-pull-stream')
 
 //we need a manifest of methods we wish to expose.
-var api = {
+const manifest = {
   //async is a normal async function
   hello: 'async',
 
@@ -23,30 +37,53 @@ var api = {
   //TODO: sink and duplex pull-streams
 }
 
-//pass the api into the constructor, and then pass the object you are wrapping
-//(if there is a local api)
-var client = MRPC(api, null) () //remoteApi, localApi
-var server = MRPC(null, api) ({
-  hello: function (name, cb) {
+//the actual methods which the server exposes
+const api = {
+  hello(name, cb) {
     cb(null, 'hello, ' + name + '!')
   },
-  stuff: function () {
+  stuff() {
     return pull.values([1, 2, 3, 4, 5])
   }
-})
+}
 
-// pass in a cb for the stream end event
-var a = client.createStream(console.log.bind(console, 'stream is closed'))
-var b = server.createStream()
-// or subscribe to the 'closed' event
-b.once('closed', console.log.bind(console, 'stream is closed'))
+//pass the manifests into the constructor, and then pass the local api object you are wrapping
+//(if there is a local api)
+const client = MRPC(manifest, null) () //MRPC (remoteManifest, localManifest) (localApi)
+const server = MRPC(null, manifest) (api)
+```
 
-pull(a, b, a) //pipe together
+now set up a server, and connect to it...
 
+```js
+const net = require('net')
+
+net.createServer(stream => {
+  stream = toPull.duplex(stream) //turn into a pull-stream
+  //connect the output of the net stream to the muxrpc stream
+  //and then output of the muxrpc stream to the net stream
+  pull(stream, server.createStream(), stream)
+}).listen(8080)
+//connect a pair of duplex streams together.
+
+const stream = toPull.duplex(net.connect(8080))
+
+const onClose = () => {
+  console.log('connected to muxrpc server')
+}
+
+pull(stream, client.createStream(onClose), stream)
+
+// Now you can call methods like this.
 client.hello('world', function (err, value) {
   if(err) throw err
   console.log(value)
   // hello, world!
+})
+
+// Alternatively, you can use the promise syntax.
+client.hello('world').then((value) => {
+  console.log(value)
 })
 
 pull(client.stuff(), pull.drain(console.log))
@@ -57,13 +94,50 @@ pull(client.stuff(), pull.drain(console.log))
 // 5
 ```
 
+## protocol
+
+As indicated by the name, `muxrpc` combines both multiplexing and rpc (remote procedure call,
+i.e. request-response). The protocol is described in details in [rpc protocol section of the protocol guide](https://ssbc.github.io/scuttlebutt-protocol-guide/#rpc-protocol)
+
+## Api: createMuxrpc (remoteManifest, localManifest, localApi, id, perms, codec, legacy) => rpc
+
+`remoteManifest` the manifest expected on the remote end of this connection.
+`localManifest` the manifest of the methods we are exposing locally.
+`localApi` the actual methods we are exposing - this is on object with function with call types
+that match the manifest.
+
+`id` a string identifing the _remote_ identity. `muxrpc` only knows the name of it's friend
+but not it's own name.
+
+`perms` a permissions object with `{test: function (path, type, args) {} }` function.
+
+`codec` stream encoding. defaults to [packet-stream-codec](https://github.com/ssbc/packet-stream-codec)
+
+`legacy` engage legacy mode.
+
+### rpc
+
+an [EventEmitter](https://devdocs.io/node/events#events_class_eventemitter)
+containing proxies for all the methods defined in your manifest, as well as the following:
+
+* `stream`
+* `createStream` method, **only if `legacy` mode**
+* `id` (string, the id of the remote)
+* `_emit` emit an event locally.
+* `closed` a boolean, wether the instance is closed.
+* `close` an async method to close this connection, will end the `rpc.stream`
+
+And every method provided in the manifest. If a method in the manifest has the same
+name as a built in, the built in will override the manifest, and you will not be able
+to call that remove method.
+
 ## Manifest
 
-like multilevel, a [manifest is required](https://github.com/juliangruber/multilevel#plugins)
-except it works a little differently, and since muxrpc works with any api,
-not assuming leveldb then you must write the manifest yourself.
-
-The manifest is simply an object mapping to strings, or nested objects.
+`muxrpc` works with async functions, sync functions, and pull-streams.
+But that javascript is dynamic, we need to tell muxrpc what sort of method
+should be at what api, that is what the "mainfest" is for.
+The manifest is simply an object mapping a key to one of the strings "sync" "async" "source" "sink" or "duplex",
+or a nested manifest.
 
 ``` js
 {
@@ -84,22 +158,14 @@ The manifest is simply an object mapping to strings, or nested objects.
 
 ## Permissions
 
-If you are exposing an api over a network connection,
-then you probably want some sort of authorization system.
-`muxrpc@4` and earlier had a `rpc.permissions()` method on
-the rpc object, but this has been removed.
-Now you must pass a permissions function, which is called with
-the `name` (a path) and `args`, if this function does not throw
-an error, then the call is allowed.
-
-In some cases, a simple allow/deny list is sufficient.
-A helper function, is provided, which was a part of muxrpc@4
+muxrpc includes a helper module for defining permissions.
+it implements a simple allow/deny list to define permissions for a given connection.
 
 ``` js
 
 var Permissions = require('muxrpc/permissions')
 
-var api = {
+var manifest = {
   foo: 'async',
   bar: 'async',
   auth: 'async'
@@ -108,7 +174,7 @@ var api = {
 //set initial settings
 var perms = Perms({allow: ['auth']})
 
-var rpc = muxrpc(null, api, serializer)({
+var rpc = muxrpc(null /* no remote manifest */, manifest, serializer)({
   foo: function (val, cb) {
     cb(null, {okay: 'foo'})
   },
@@ -128,47 +194,62 @@ var rpc = muxrpc(null, api, serializer)({
     //else we ARE authorized.
     cb(null, 'ACCESS GRANTED')
   }
-}, perms)
+}, perms) //pass the perms object to the second argument of the constructor.
 
 //Get a stream to connect to the remote. As in the above example!
 var ss = rpc.createStream()
 
 ```
 
-## bootstrapping
+## bootstrapping - automatically loading the remote manifest.
 
-sometimes you don't know the remote manifest yet. if you pass a callback
-instead of `remoteApi` a an async method `manifest` is called on the remote
-which should return a manifest. This then used as the remote manifest
+Sometimes you don't know the remote manifest yet. If you pass a callback
+instead of `remoteManifest`, then an async method `manifest` is called on the
+remote, which should return a manifest. This then used as the remote manifest
 and the callback is called.
 
 ``` js
-
 var manifest = { hello: 'sync', manifest: 'sync' }
 
-var bob = Muxrpc(null, manifest)  ({
-  hello: function (n) {
-    if(this._emit) this._emit('hello', n)
-    console.log('hello from ' + this.id)
-    return n + ':' + this.id
+var alice = Muxrpc(null, manifest)({
+  hello: function (message) {
+    if(this._emit) this._emit('hello', message)
+    console.log(`${this.id} received ${message}`)
+    return `${message} to you too`
   },
   manifest: function () {
     return manifest
   }
 })
 
-var alice = Muxrpc(function (err, alice) {
-  //alice now knows the bob's api
-})
-var as = alice.createStream()
-pull(as, bob.createStream(), as)
+
+var bob = Muxrpc(function (err, manifest) {
+  if (err) throw err
+
+  // Bob now knows Alice's API
+  console.log(manifest) // => { hello: 'sync', manifest: 'sync' }
+
+  bob.hello('aloha', (err, val) => {
+    if (err) throw err
+    console.log(val) // => "aloha to you too"
+  })
+})()
+
+var bobStream = bob.createStream()
+
+alice.id = 'alice'
+bob.id = 'bob'
+
+pull(
+  bobStream,
+  alice.createStream(),
+  bobStream
+)
 ```
 
 ## License
 
 MIT
-
-
 
 
 

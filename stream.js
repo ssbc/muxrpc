@@ -1,22 +1,12 @@
 'use strict';
-var pull         = require('pull-stream')
+var PacketStream = require('packet-stream')
+var pullWeird    = require('./pull-weird')
 var goodbye      = require('pull-goodbye')
 var u            = require('./util')
 var explain      = require('explain-error')
-var PushMux      = require('push-mux')
-
-var toPull = require('./push-to-pull')
 
 function isFunction (f) {
   return 'function' === typeof f
-}
-
-function isString (s) {
-  return 'string' === typeof s
-}
-
-function isObject (o) {
-  return o && 'object' === typeof o
 }
 
 function isSource    (t) { return 'source' === t }
@@ -29,55 +19,80 @@ function isStream    (t) { return isSource(t) || isSink(t) || isDuplex(t) }
 
 module.exports = function initStream (localCall, codec, onClose) {
 
-  var ps = new PushMux({
-    credit: 64*1024*1024, //that's a very small default window. only packets
-    onMessage: function (msg) {},
-    onRequest: function (opts, cb) {
+  var ps = PacketStream({
+    message: function () {
+//      if(isString(msg)) return
+//      if(msg.length > 0 && isString(msg[0]))
+//        localCall('msg', 'emit', msg)
+    },
+    request: function (opts, cb) {
+      if(!Array.isArray(opts.args))
+        return cb(new Error('invalid request, args should be array, was:'+JSON.stringify(opts)))
       var name = opts.name, args = opts.args
-      var inCB = false, called = false, async = false, value
+      var inCB = false, called = false
 
       args.push(function (err, value) {
         called = true
-        inCB = true;
-        cb(err, value)
+        inCB = true; cb(err, value)
       })
       try {
-        value = localCall('async', name, args)
-        async = true
+        localCall('async', name, args)
       } catch (err) {
         if(inCB || called) throw explain(err, 'no callback provided to muxrpc async funtion')
         return cb(err)
       }
 
     },
-    onStream: function (stream, data) {
-      var _stream
-      try {
-        _stream = localCall(data.type, data.name, data.args)
-      } catch (err) {
-        return stream.end(err)
+    stream: function (stream) {
+      stream.read = function (data, end) {
+        var name = data.name
+        var type = data.type
+        var err, value
+
+        stream.read = null
+
+        if(!isStream(type))
+          return stream.write(null, new Error('unsupported stream type:'+type))
+
+        //how would this actually happen?
+        if(end) return stream.write(null, end)
+
+        try { value = localCall(type, name, data.args) }
+        catch (_err) { err = _err }
+
+        var _stream = pullWeird[
+          {source: 'sink', sink: 'source'}[type] || 'duplex'
+        ](stream)
+
+        return u.pipeToStream(
+          type, _stream,
+          err ? u.errorAsStream(type, err) : value
+        )
+
+//        if(isSource(type))
+//          _stream(err ? pull.error(err) : value)
+//        else if (isSink(type))
+//          (err ? abortSink(err) : value)(_stream)
+//        else if (isDuplex(type))
+//          pull(_stream, err ? abortDuplex(err) : value, _stream)
       }
-      if(data.type == 'source')
-        pull(_stream, toPull.sink(stream))
-      else if(data.type == 'sink')
-        pull(toPull.source(stream), _stream)
-      else if(data.type == 'duplex')
-        pull(_stream, toPull.duplex(stream), _stream)
     },
-    onClose: function (err) {
-      ps = null // deallocate
-      ws.ended = true
-      if(ws.closed) return
-      ws.closed = true
-      if(onClose) {
-        var close = onClose; onClose = null; close(err === true ? null : err)
+
+    close: function (err) {
+        ps = null // deallocate
+        ws.ended = true
+        if(ws.closed) return
+        ws.closed = true
+        if(onClose) {
+          var close = onClose; onClose = null; close(err)
+        }
       }
-    }
   })
 
-  var ws = goodbye(toPull.duplex(ps))
+  var ws = goodbye(pullWeird(ps, function () {
+    //this error will be handled in PacketStream.close
+  }))
 
-  //used with muxrpc, this means
   ws = codec ? codec(ws) : ws
 
   ws.remoteCall = function (type, name, args, cb) {
@@ -89,12 +104,18 @@ module.exports = function initStream (localCall, codec, onClose) {
     if(isRequest(type))
       return ps.request({name: name, args: args}, cb)
 
-    var ws = ps.stream({name: name, args: args, type: type})
-    var s = toPull[type](ws, cb)
+    var ws = ps.stream(), s = pullWeird[type](ws, cb)
+    ws.write({name: name, args: args, type: type})
     return s
   }
 
-  // is this used anywhere?
+
+  //hack to work around ordering in setting ps.ended.
+  //Question: if an object has subobjects, which
+  //all have close events, should the subobjects fire close
+  //before the parent? or should parents close after?
+  //should there be a preclose event on the parent
+  //that fires when it's about to close all the children?
   ws.isOpen = function () {
     return !ps.ended
   }
@@ -103,11 +124,19 @@ module.exports = function initStream (localCall, codec, onClose) {
     if(isFunction(err))
       cb = err, err = false
     if(!ps) return (cb && cb())
-    ps.abort(err)
-    cb && cb()
+    if(err) return ps.destroy(err), (cb && cb())
+
+    ps.close(function (err) {
+      if(cb) cb(err)
+      else if(err) throw explain(err, 'no callback provided for muxrpc close')
+    })
+
     return this
   }
   ws.closed = false
 
   return ws
 }
+
+
+

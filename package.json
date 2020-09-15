@@ -1,7 +1,7 @@
 {
   "name": "muxrpc",
   "description": "combined multiplexing and rpc - because a node api needs streams & async",
-  "version": "7.0.1",
+  "version": "6.5.0",
   "homepage": "https://github.com/ssbc/muxrpc",
   "repository": {
     "type": "git",
@@ -9,11 +9,10 @@
   },
   "dependencies": {
     "explain-error": "^1.0.1",
+    "packet-stream": "~2.0.0",
     "packet-stream-codec": "^1.1.1",
-    "pull-goodbye": "~0.0.1",
-    "pull-stream": "^3.2.3",
-    "push-mux": "^1.0.2",
-    "push-stream-to-pull-stream": "^1.0.0"
+    "pull-goodbye": "0.0.2",
+    "pull-stream": "^3.6.10"
   },
   "devDependencies": {
     "cont": "~1.0.1",

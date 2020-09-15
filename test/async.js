@@ -27,7 +27,6 @@ module.exports = function(serializer, buffers) {
   }
 
   tape('async', function (t) {
-
     var A = mux(client, null, serializer) ()
     var B = mux(null, client, serializer) ({
       hello: function (a, cb) {
@@ -38,20 +37,15 @@ module.exports = function(serializer, buffers) {
       }
     })
 
-    function log(name) {
-      return pull.through(function (data) {
-        console.log(name, data)
-      })
-    }
-
     var s = A.createStream()
-    pull(s, log('a->b'), B.createStream(), log('b->a'), s)
+    pull(s, pull.through(console.log), B.createStream(), pull.through(console.log), s)
+
     A.hello('world', function (err, value) {
       if(err) throw err
       console.log(value)
       t.equal(value, 'hello, world')
 
-      var buf = new Buffer([0, 1, 2, 3, 4])
+      var buf = Buffer.from([0, 1, 2, 3, 4])
       A.goodbye(buf, function (err, buf2) {
         if (err) throw err
         console.log(b(buf2), b(buf))
@@ -59,16 +53,41 @@ module.exports = function(serializer, buffers) {
         t.end()
       })
     })
+  })
 
+  tape('async promise', function (t) {
+    var A = mux(client, null, serializer) ()
+    var B = mux(null, client, serializer) ({
+      hello: function (a, cb) {
+        cb(null, 'hello, '+a)
+      },
+      goodbye: function(b, cb) {
+        cb(null, b)
+      }
+    })
 
+    var s = A.createStream()
+    pull(s, pull.through(console.log), B.createStream(), pull.through(console.log), s)
+
+    A.hello('world').then((value) => {
+      console.log(value)
+      t.equal(value, 'hello, world')
+
+      var buf = Buffer.from([0, 1, 2, 3, 4])
+      A.goodbye(buf).then((buf2) => {
+        console.log(b(buf2), b(buf))
+        t.deepEqual(b(buf2), b(buf))
+        t.end()
+      })
+    })
   })
 
   tape('source', function (t) {
 
     var expected = [
-          new Buffer([0, 1]),
-          new Buffer([2, 3]),
-          new Buffer([4, 5])
+          Buffer.from([0, 1]),
+          Buffer.from([2, 3]),
+          Buffer.from([4, 5])
         ]
 
     var A = mux(client, null, serializer) ()
@@ -125,17 +144,17 @@ module.exports = function(serializer, buffers) {
       A.syncErr('blah', function (err) {
         t.equal(err.message, 'test error:blah')
         t.end()
+
       })
     })
 
   })
 
-  tape('sink 1', function (t) {
+  tape('sink', function (t) {
 
     var A = mux(client, null, serializer) ()
     var B = mux(null, client, serializer) ({
       things: function (someParam) {
-        console.log('stream:things', someParam)
         return pull.collect(function(err, values) {
           if (err) throw err
           t.equal(someParam, 5)
@@ -146,8 +165,7 @@ module.exports = function(serializer, buffers) {
     })
 
     var s = A.createStream()
-    pull(s, B.createStream(), s)
-
+    pull(s, pull.through(console.log), B.createStream(), pull.through(console.log), s)
     pull(pull.values([1,2,3,4,5]), A.things(5))
   })
 
@@ -187,9 +205,10 @@ module.exports = function(serializer, buffers) {
 
   tape('async - error1', function (t) {
     var A = mux(client, null) ()
+
     var s = A.createStream()
 
-    A.hello('world', function (err, value) {
+    A.hello('world', function (err) {
       t.ok(err)
       t.end()
     })
@@ -202,7 +221,7 @@ module.exports = function(serializer, buffers) {
 
     var s = A.createStream()
 
-    A.hello('world', function (err, value) {
+    A.hello('world', function (err) {
       console.log('CB!')
       t.ok(err)
       t.end()
@@ -259,57 +278,57 @@ module.exports = function(serializer, buffers) {
 //    s.sink(function (abort, cb) { cb(true) })
 //  })
 
-//disabled this api because I'm pretty sure we don't
-//use it anywhere in sbot and it looks like it will take a while
-//to debug.
+  tape('recover error written to outer stream', function (t) {
 
-//  tape('recover error written to outer stream', function (t) {
-//
-//    var A = mux(client, null) ()
-//    var err = new Error('testing errors')
-//    var s = A.createStream(function (_err) {
-//      t.equal(_err, err)
-//      t.end()
-//    })
-//
-//    pull(pull.error(err), s.sink)
-//
-//  })
-//
-//  tape('recover error when outer stream aborted', function (t) {
-//
-//    var A = mux(client, null) ()
-//    var err = new Error('testing errors')
-//    var s = A.createStream(function (_err) {
-//      t.equal(_err, err)
-//      t.end()
-//    })
-//
-//    s.source(err, function () {})
-//  })
-//
-//  tape('cb when stream is ended', function (t) {
-//
-//    var A = mux(client, null) ()
-//    var s = A.createStream(function (_err) {
-//      t.equal(_err, null)
-//      t.end()
-//    })
-//
-//    pull(pull.empty(), s.sink)
-//
-//  })
-//
-//  tape('cb when stream is aborted', function (t) {
-//
-//    var A = mux(client, null) ()
-//    var s = A.createStream(function (_err) {
-//      t.equal(_err, null)
-//      t.end()
-//    })
-//
-//    s.source(true, function () {})
-//  })
+    var A = mux(client, null) ()
+    var err = new Error('testing errors')
+    var s = A.createStream(function (_err) {
+      t.equal(_err, err)
+      t.end()
+    })
+
+    pull(pull.error(err), s.sink)
+
+  })
+
+  tape('recover error when outer stream aborted', function (t) {
+
+    var A = mux(client, null) ()
+    var err = new Error('testing errors')
+    var s = A.createStream(function (_err) {
+      t.equal(_err, err)
+      t.end()
+    })
+
+    s.source(err, function () {})
+  })
+
+  tape('cb when stream is ended', function (t) {
+
+    var A = mux(client, null) ()
+    var s = A.createStream(function (err) {
+//      if(err) throw err
+      t.ok(err)
+//      t.equal(err, null)
+      t.end()
+    })
+
+    pull(pull.empty(), s.sink)
+
+  })
+
+  tape('cb when stream is aborted', function (t) {
+    var err = new Error('testing error')
+    var A = mux(client, null) ()
+    var s = A.createStream(function (_err) {
+  //    if(_err) throw err
+      t.equal(_err, err)
+//      t.ok(err)
+      t.end()
+    })
+
+    s.source(err, function () {})
+  })
 
   var client2 = {
     salutations: {
@@ -339,7 +358,7 @@ module.exports = function(serializer, buffers) {
       console.log(value)
       t.equal(value, 'hello, world')
 
-      var buf = new Buffer([0, 1, 2, 3, 4])
+      var buf = Buffer.from([0, 1, 2, 3, 4])
       A.salutations.goodbye(buf, function (err, buf2) {
         if (err) throw err
         t.deepEqual( b(buf2), b(buf))
@@ -349,28 +368,22 @@ module.exports = function(serializer, buffers) {
 
   })
 
-  tape('sink end cb', function (t) {
+  tape('sink', function (t) {
     var A = mux(client, null, serializer)()
     var B = mux(null, client, serializer)({
       things: function (len) {
-        return pull(
-          pull.through(console.log),
-          pull.collect(function (err, ary) {
-            t.equal(ary.length, len)
-          })
-        )
+        return pull.collect(function (err, ary) {
+          t.equal(ary.length, len)
+        })
       }
     })
 
     var s = A.createStream(); pull(s, B.createStream(), s)
 
-    pull(
-      pull.values([1,2,3]),
-      A.things(3, function (err) {
-        if(err) throw err
-        t.end()
-      })
-    )
+    pull(pull.values([1,2,3]), A.things(3, function (err) {
+      if(err) throw err
+      t.end()
+    }))
   })
 
   tape('sink - abort', function (t) {
@@ -378,7 +391,7 @@ module.exports = function(serializer, buffers) {
 
     var A = mux(client, null, serializer)()
     var B = mux(null, client, serializer)({
-      things: function (len) {
+      things: function () {
         return function (read) {
           read(err, function () {})
         }
@@ -389,7 +402,6 @@ module.exports = function(serializer, buffers) {
 
     pull(pull.values([1,2,3]), A.things(3, function (_err) {
       t.ok(_err)
-      console.log(_err)
       t.equal(_err.message, err.message)
       t.end()
     }))

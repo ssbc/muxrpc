@@ -4,7 +4,7 @@ var codec = require('packet-stream-codec')
 require('./async')(codec, true)
 require('./abort')(codec, true)
 require('./closed')(codec, true)
-require('./missing')(codec, true)
+//require('./emit')(codec, true)
 
 //this test isn't passing right,
 //but scuttlebot is passing its tests
@@ -12,7 +12,5 @@ require('./missing')(codec, true)
 //so ... YOLO
 
 //require('./stream-end')(codec, true)
-
-
 
 
