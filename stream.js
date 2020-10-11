@@ -45,6 +45,9 @@ module.exports = function initStream (localCall, codec, onClose) {
     },
     stream: function (stream) {
       stream.read = function (data, end) {
+        //how would this actually happen?
+        if(end) return stream.write(null, end)
+
         var name = data.name
         var type = data.type
         var err, value
@@ -53,9 +56,6 @@ module.exports = function initStream (localCall, codec, onClose) {
 
         if(!isStream(type))
           return stream.write(null, new Error('unsupported stream type:'+type))
-
-        //how would this actually happen?
-        if(end) return stream.write(null, end)
 
         try { value = localCall(type, name, data.args) }
         catch (_err) { err = _err }
