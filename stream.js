@@ -47,6 +47,7 @@ module.exports = function initStream (localCall, codec, onClose) {
       stream.read = function (data, end) {
         //how would this actually happen?
         if(end) return stream.write(null, end)
+        if(!data) return stream.write(null, new Error("falsy data given to stream.read"))
 
         var name = data.name
         var type = data.type
