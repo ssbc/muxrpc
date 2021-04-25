@@ -5,13 +5,13 @@ var permissions = require('../permissions')
 
 var tape = require('tape')
 
-tape('whitelist', function (t) {
+tape('allowlist', function (t) {
 
   var p = permissions()
 
   p({allow: ['foo', 'bar', 'baz']})
 
-  console.log(p)
+  if (process.env.TEST_VERBOSE) console.log(p)
 
   t.ifError(p.test('foo'))
   t.ifError(p.test('bar'))
@@ -23,7 +23,7 @@ tape('whitelist', function (t) {
   t.end()
 })
 
-tape('nested whitelist', function (t) {
+tape('nested allowlist', function (t) {
   var p = permissions()
 
   p({allow: ['foo']})
@@ -33,7 +33,7 @@ tape('nested whitelist', function (t) {
 
 })
 
-tape('nested blacklist', function (t) {
+tape('nested blocklist', function (t) {
 
   var p = permissions()
 
@@ -45,7 +45,7 @@ tape('nested blacklist', function (t) {
 })
 
 
-tape('deep blacklist', function (t) {
+tape('deep blocklist', function (t) {
 
   var p = permissions()
 
@@ -58,7 +58,7 @@ tape('deep blacklist', function (t) {
 })
 
 
-tape('deep blacklist, dotted strings', function (t) {
+tape('deep blocklist, dotted strings', function (t) {
 
   var p = permissions()
 

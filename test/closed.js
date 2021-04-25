@@ -23,17 +23,23 @@ module.exports = function(serializer) {
     })
 
     var s = A.createStream()
-    pull(s, pull.through(console.log), B.createStream(), pull.through(console.log), s)
+    pull(
+      s,
+      process.env.TEST_VERBOSE ? pull.through(console.log) : null,
+      B.createStream(),
+      process.env.TEST_VERBOSE ? pull.through(console.log) : null,
+      s
+    )
 
     A.hello('world', function (err, value) {
       if(err) throw err
-      console.log(value)
+      if (process.env.TEST_VERBOSE) console.log(value)
       t.equal(value, 'hello, world')
 
       A.close(function (err) {
         if (err) throw err
         A.hello('world', function (err) {
-          console.log(err)
+          if (process.env.TEST_VERBOSE) console.log(err)
           t.ok(err)
           t.end()
         })
@@ -54,18 +60,24 @@ module.exports = function(serializer) {
     })
 
     var s = A.createStream()
-    pull(s, pull.through(console.log), B.createStream(), pull.through(console.log), s)
+    pull(
+      s,
+      process.env.TEST_VERBOSE ? pull.through(console.log) : null,
+      B.createStream(),
+      process.env.TEST_VERBOSE ? pull.through(console.log) : null,
+      s
+    )
 
     pull(A.stuff(5), pull.collect(function (err, ary) {
       if(err) throw err
-      console.log(ary)
+      if (process.env.TEST_VERBOSE) console.log(ary)
       t.deepEqual(ary, [5, 10, 15, 20, 25])
 
       A.close(function (err) {
         if (err) throw err
         pull(A.stuff(5), pull.collect(function (err) {
           t.ok(err)
-          console.log(err)
+          if (process.env.TEST_VERBOSE) console.log(err)
           t.end()
         }))
       })
@@ -83,7 +95,13 @@ module.exports = function(serializer) {
     })
 
     var s = A.createStream()
-    pull(s, pull.through(console.log), B.createStream(), pull.through(console.log), s)
+    pull(
+      s,
+      process.env.TEST_VERBOSE ? pull.through(console.log) : null,
+      B.createStream(),
+      process.env.TEST_VERBOSE ? pull.through(console.log) : null,
+      s
+    )
     A.close(function (err) {
       if (err) throw err
       pull(pull.values([1,2,3,4,5]), A.things(5))
@@ -109,11 +127,17 @@ module.exports = function(serializer) {
     })
 
     var s = A.createStream()
-    pull(s, pull.through(console.log), B.createStream(), pull.through(console.log), s)
+    pull(
+      s,
+      process.env.TEST_VERBOSE ? pull.through(console.log) : null,
+      B.createStream(),
+      process.env.TEST_VERBOSE ? pull.through(console.log) : null,
+      s
+    )
 
     A.hello('world', function (err, value) {
       if(err) throw err
-      console.log(value)
+      if (process.env.TEST_VERBOSE) console.log(value)
       t.equal(value, 'hello, world')
 
       A.close(function (err) {

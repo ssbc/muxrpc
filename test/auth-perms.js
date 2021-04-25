@@ -137,7 +137,7 @@ tape('secure rpc', function (t) {
     client.login({name: 'user', pass: 'password'}, function (err, res) {
       if(err) throw err
       t.ok(res.okay)
-      console.log(res)
+      if (process.env.TEST_VERBOSE) console.log(res)
       t.equal(res.name, 'user')
 
       cont.para([
@@ -279,7 +279,7 @@ tape('nested sessions', function (t) {
           }))
         }
       ])(function () {
-          
+
           t.end()
         })
     })

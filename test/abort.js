@@ -69,7 +69,7 @@ module.exports = function (serializer) {
             abortable.abort()
           }),
           pull.collect(function (err, ary) {
-            console.log(ary)
+            if (process.env.TEST_VERBOSE) console.log(ary)
             t.deepEqual(ary, [1, 2, 3])
           })
         )
@@ -85,7 +85,7 @@ module.exports = function (serializer) {
 
     pull(
       pull.values([1,2,3,4,5,6,7,8,9,10], function (abort) {
-        console.log(abort)
+        if (process.env.TEST_VERBOSE) console.log(abort)
         t.ok(sent.length < 10, 'sent is correct')
         t.end()
       }),

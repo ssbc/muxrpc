@@ -37,7 +37,13 @@ function createClient (t) {
   })
 
   var s = A.createStream()
-  pull(s, pull.through(console.log), B.createStream(), pull.through(console.log), s)
+  pull(
+    s,
+    process.env.TEST_VERBOSE ? pull.through(console.log) : null,
+    B.createStream(),
+    process.env.TEST_VERBOSE ? pull.through(console.log) : null,
+    s
+  )
 
   return A
 }
@@ -45,7 +51,7 @@ function createClient (t) {
 tape('request which is not public', function (t) {
 
   //create a client with a different manifest to the server.
-  //create a server that 
+  //create a server that
 
   const A = createClient(t)
 
@@ -112,7 +118,7 @@ tape('client and server manifest have different types', function (t) {
   pull(as, B.createStream(), as)
 
   A.foo(function (err) {
-    console.log(err)
+    if (process.env.TEST_VERBOSE) console.log(err)
     t.ok(err)
     t.end()
   })

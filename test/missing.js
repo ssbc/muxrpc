@@ -20,10 +20,10 @@ tape('close after both sides of a duplex stream ends', function (t) {
   pull(
     function (err, cb) {
       if(!err) setTimeout(function () { cb(null, Date.now()) })
-      else console.log('ERROR', err)
+      else if (process.env.TEST_VERBOSE) console.log('ERROR', err)
     },
     A.echo(function () {
-      console.error('caught err')
+      if (process.env.TEST_VERBOSE) console.error('caught err')
     }),
     pull.collect(function (err) {
       t.ok(err)
