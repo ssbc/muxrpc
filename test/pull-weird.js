@@ -11,7 +11,7 @@ var pull = require('pull-stream')
 tape('aborts pull-weird correctly', function (t) {
 
   t.plan(2)
-  var ps = new PacketStream({})
+  var ps = PacketStream({})
 
 
   pull(
