@@ -39,13 +39,13 @@ tape('outer stream ends after close', function (t) {
 
   A.hello('jim', function (err, value) {
     if(err) throw err
-    console.log(value)
+    if (process.env.TEST_VERBOSE) console.log(value)
     t.equal(value, 'hello, jim')
   })
 
   A.goodbye('bbb', function (err, value) {
     if(err) throw err
-    console.log(value)
+    if (process.env.TEST_VERBOSE) console.log(value)
     t.equal(value, 'bbb')
   })
 
@@ -84,22 +84,22 @@ tape('close after uniplex streams end', function (t) {
   pull(as, bs, as)
 
   B.on('closed', function () {
-    console.log('B emits "closed"')
+    if (process.env.TEST_VERBOSE) console.log('B emits "closed"')
     t.ok(true)
   })
 
   A.on('closed', function () {
-    console.log('A emits "closed"')
+    if (process.env.TEST_VERBOSE) console.log('A emits "closed"')
     t.ok(true)
   })
 
   B.close(function (err) {
-    console.log('B CLOSE')
+    if (process.env.TEST_VERBOSE) console.log('B CLOSE')
     t.notOk(err, 'bs is closed')
   })
 
   A.close(function (err) {
-    console.log('A CLOSE')
+    if (process.env.TEST_VERBOSE) console.log('A CLOSE')
     t.notOk(err, 'as is closed')
   })
 })
@@ -125,12 +125,12 @@ tape('close after uniplex streams end 2', function (t) {
   pull(as, bs, as)
 
   B.close(function (err) {
-    console.log('B CLOSE')
+    if (process.env.TEST_VERBOSE) console.log('B CLOSE')
     t.notOk(err, 'bs is closed')
   })
 
   A.close(function (err) {
-    console.log('A CLOSE')
+    if (process.env.TEST_VERBOSE) console.log('A CLOSE')
     t.notOk(err, 'as is closed')
   })
 })
@@ -142,9 +142,10 @@ tape('close after both sides of a duplex stream ends', function (t) {
   var A = mux(client, null, codec) ()
   var B = mux(null, client, codec) ({
     echo: function () {
-      return pull.through(console.log, function () {
-        t.ok(true)
-      })
+      return pull.through(
+        process.env.TEST_VERBOSE ? console.log : () => {},
+        () => { t.ok(true) }
+      )
     }
   })
 
@@ -174,12 +175,12 @@ tape('close after both sides of a duplex stream ends', function (t) {
   })
 
   B.close(function (err) {
-    console.log('B CLOSE')
+    if (process.env.TEST_VERBOSE) console.log('B CLOSE')
     t.notOk(err, 'bs is closed')
   })
 
   A.close(function (err) {
-    console.log('A CLOSE', err)
+    if (process.env.TEST_VERBOSE) console.log('A CLOSE', err)
     t.notOk(err, 'as is closed')
   })
 
@@ -190,7 +191,7 @@ tape('closed is emitted when stream disconnects', function (t) {
   t.plan(2)
   var A = mux(client, null) ()
   A.on('closed', function (err) {
-    console.log('EMIT CLOSED')
+    if (process.env.TEST_VERBOSE) console.log('EMIT CLOSED')
     t.notOk(err)
   })
   pull(pull.empty(), A.createStream(function (err) {
@@ -206,7 +207,7 @@ tape('closed is emitted with error when stream errors', function (t) {
     t.notOk(err)
   })
   pull(pull.empty(), A.createStream(function (err) {
-    console.log(err)
+    if (process.env.TEST_VERBOSE) console.log(err)
     t.notOk(err) //end of parent stream
   }), pull.drain())
 })

@@ -7,7 +7,7 @@ var manifest = { hello: 'sync' }
 var api = {
   hello: function (n) {
     if(this._emit) this._emit('hello', n)
-    console.log('hello from ' + this.id)
+    if (process.env.TEST_VERBOSE) console.log('hello from ' + this.id)
     return n + ':' + this.id
   }
 }
@@ -56,7 +56,7 @@ tape('emit an event from the called api function', function (t) {
   bob.id = 'Alice'
 
   bob.on('hello', function (n) {
-    console.log('HELLO')
+    if (process.env.TEST_VERBOSE) console.log('HELLO')
     t.equal(n, 'bob')
   })
   alice.hello('bob', function (err, data) {
