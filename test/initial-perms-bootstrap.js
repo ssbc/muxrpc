@@ -1,18 +1,18 @@
-var tape = require('tape')
-var pull = require('pull-stream')
-var mux = require('../')
-var cont = require('cont')
+const tape = require('tape')
+const pull = require('pull-stream')
+const mux = require('../')
+const cont = require('cont')
 
-var api = {
-  get    : 'async',
-  put    : 'async',
-  del    : 'async',
-  read   : 'source',
+const api = {
+  get: 'async',
+  put: 'async',
+  del: 'async',
+  read: 'source',
   nested: {
-    get    : 'async',
-    put    : 'async',
-    del    : 'async',
-    read   : 'source',
+    get: 'async',
+    put: 'async',
+    del: 'async',
+    read: 'source'
   },
   manifest: 'sync'
 }
@@ -21,20 +21,20 @@ function id (e) {
   return e
 }
 
-var store = {
+const store = {
   foo: 1,
   bar: 2,
   baz: 3
 }
 
 function createServerAPI (store) {
-  var name = 'nobody'
+  const name = 'nobody'
 
-  //this wraps a session.
+  // this wraps a session.
 
-  var session = {
+  const session = {
     whoami: function (cb) {
-      cb(null, {okay: true, user: name})
+      cb(null, { okay: true, user: name })
     },
     get: function (key, cb) {
       return cb(null, store[key])
@@ -48,7 +48,7 @@ function createServerAPI (store) {
       cb()
     },
     read: function () {
-      return pull.values([1,2,3])
+      return pull.values([1, 2, 3])
     },
     manifest: function () {
       return api
@@ -57,16 +57,15 @@ function createServerAPI (store) {
 
   session.nested = session
 
-  return mux(null, api, id)(session, {allow: ['manifest', 'get']})
+  return mux(null, api, id)(session, { allow: ['manifest', 'get'] })
 }
 
-function createClientAPI(cb) {
+function createClientAPI (cb) {
   return mux(cb, null, id)()
 }
 
 tape('secure rpc', function (t) {
-
-  var afterBootstrap = function () {
+  const afterBootstrap = function () {
     cont.para([
       function (cb) {
         client.get('foo', function (err) {
@@ -93,11 +92,11 @@ tape('secure rpc', function (t) {
     })
   }
 
-  var server = createServerAPI(store)
-  var client = createClientAPI(afterBootstrap)
+  const server = createServerAPI(store)
+  const client = createClientAPI(afterBootstrap)
 
-  var ss = server.createStream()
-  var cs = client.createStream()
+  const ss = server.createStream()
+  const cs = client.createStream()
 
   pull(cs, ss, cs)
 })

@@ -1,17 +1,14 @@
+const u = require('../util')
 
-
-var u = require('../util')
-
-var tape = require('tape')
+const tape = require('tape')
 
 tape('set, get, prefix', function (t) {
-
-  var o = {}
+  const o = {}
   u.set(o, ['foo', 'bar', 'baz'], 24)
 
   t.equal(u.get(o, ['foo', 'bar', 'baz']), 24)
 
-  t.deepEqual(o, {foo: {bar: {baz: 24}}})
+  t.deepEqual(o, { foo: { bar: { baz: 24 } } })
 
   t.notOk(u.prefix(o, ['foo', 'baz']))
 
@@ -20,12 +17,9 @@ tape('set, get, prefix', function (t) {
   t.notOk(u.prefix(o, ['blah']))
 
   t.end()
-
 })
 
-
 tape('prefix 0', function (t) {
-
   t.ok(
     u.prefix({
       foo: true

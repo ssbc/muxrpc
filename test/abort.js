@@ -1,74 +1,29 @@
 
-var mux  = require('../')
-var tape = require('tape')
-var pull = require('pull-stream')
-var Abortable = require('pull-abortable')
+const mux = require('../')
+const tape = require('tape')
+const pull = require('pull-stream')
+const Abortable = require('pull-abortable')
 
 function id (e) { return e }
 
 module.exports = function (serializer) {
   tape('stream abort', function (t) {
-    t.plan(2)
-
-    var client = {
+    t.plan(3)
+    const abortable = Abortable()
+    const client = {
       drainAbort: 'sink'
     }
 
-    var A = mux(client, null, serializer) ()
-    var B = mux(null, client, serializer) ({
-      drainAbort: function () {
-        return pull(
-          pull.take(3),
-          pull.through(console.log),
-          pull.collect(function (err, ary) {
-            console.log(ary)
-            t.deepEqual(ary, [1, 2, 3])
-          })
-        )
-      }
-    })
-
-    var as = A.createStream()
-    var bs = B.createStream()
-
-    pull(as, bs, as)
-
-    var sent = []
-
-    pull(
-      pull.values([1,2,3,4,5,6,7,8,9,10], function () {
-        t.ok(sent.length < 10, 'sent is correct')
-        t.end()
-      }),
-      pull.asyncMap(function (data, cb) {
-        setImmediate(function () {
-          cb(null, data)
-        })
-      }),
-      pull.through(sent.push.bind(sent)),
-      A.drainAbort(3)
-    )
-
-  })
-}
-
-module.exports = function (serializer) {
-  tape('stream abort', function (t) {
-    t.plan(2)
-    var abortable = Abortable()
-    var client = {
-      drainAbort: 'sink'
-    }
-
-    var A = mux(client, null, serializer) ()
-    var B = mux(null, client, serializer) ({
+    const A = mux(client, null, serializer)()
+    const B = mux(null, client, serializer)({
       drainAbort: function (n) {
         return pull(
           pull.through(function () {
-            if(--n) return
+            if (--n) return
             abortable.abort()
           }),
           pull.collect(function (err, ary) {
+            t.match(err.message, /unexpected end of parent stream/)
             if (process.env.TEST_VERBOSE) console.log(ary)
             t.deepEqual(ary, [1, 2, 3])
           })
@@ -76,15 +31,15 @@ module.exports = function (serializer) {
       }
     })
 
-    var as = A.createStream()
-    var bs = B.createStream()
+    const as = A.createStream()
+    const bs = B.createStream()
 
     pull(as, abortable, bs, as)
 
-    var sent = []
+    const sent = []
 
     pull(
-      pull.values([1,2,3,4,5,6,7,8,9,10], function (abort) {
+      pull.values([1, 2, 3, 4, 5, 6, 7, 8, 9, 10], function (abort) {
         if (process.env.TEST_VERBOSE) console.log(abort)
         t.ok(sent.length < 10, 'sent is correct')
         t.end()
@@ -97,9 +52,7 @@ module.exports = function (serializer) {
       pull.through(sent.push.bind(sent)),
       A.drainAbort(3)
     )
-
   })
 }
-
 
 module.exports(id)

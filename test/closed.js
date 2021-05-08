@@ -1,28 +1,27 @@
-var tape = require('tape')
-var pull = require('pull-stream')
-var Pushable = require('pull-pushable')
-var mux = require('../')
+const tape = require('tape')
+const pull = require('pull-stream')
+const Pushable = require('pull-pushable')
+const mux = require('../')
 
-module.exports = function(serializer) {
-  var client = {
-    hello  : 'async',
+module.exports = function (serializer) {
+  const client = {
+    hello: 'async',
     goodbye: 'async',
-    stuff  : 'source',
-    bstuff : 'source',
-    things : 'sink',
+    stuff: 'source',
+    bstuff: 'source',
+    things: 'sink',
     suchstreamwow: 'duplex'
   }
 
   tape('async handle closed gracefully', function (t) {
-
-    var A = mux(client, null, serializer) ()
-    var B = mux(null, client, serializer) ({
+    const A = mux(client, null, serializer)()
+    const B = mux(null, client, serializer)({
       hello: function (a, cb) {
-        cb(null, 'hello, '+a)
+        cb(null, 'hello, ' + a)
       }
     })
 
-    var s = A.createStream()
+    const s = A.createStream()
     pull(
       s,
       process.env.TEST_VERBOSE ? pull.through(console.log) : null,
@@ -32,7 +31,7 @@ module.exports = function(serializer) {
     )
 
     A.hello('world', function (err, value) {
-      if(err) throw err
+      if (err) throw err
       if (process.env.TEST_VERBOSE) console.log(value)
       t.equal(value, 'hello, world')
 
@@ -45,13 +44,11 @@ module.exports = function(serializer) {
         })
       })
     })
-
   })
 
   tape('source handle closed gracefully', function (t) {
-
-    var A = mux(client, null, serializer) ()
-    var B = mux(null, client, serializer) ({
+    const A = mux(client, null, serializer)()
+    const B = mux(null, client, serializer)({
       stuff: function (b) {
         return pull.values([1, 2, 3, 4, 5].map(function (a) {
           return a * b
@@ -59,7 +56,7 @@ module.exports = function(serializer) {
       }
     })
 
-    var s = A.createStream()
+    const s = A.createStream()
     pull(
       s,
       process.env.TEST_VERBOSE ? pull.through(console.log) : null,
@@ -69,7 +66,7 @@ module.exports = function(serializer) {
     )
 
     pull(A.stuff(5), pull.collect(function (err, ary) {
-      if(err) throw err
+      if (err) throw err
       if (process.env.TEST_VERBOSE) console.log(ary)
       t.deepEqual(ary, [5, 10, 15, 20, 25])
 
@@ -82,19 +79,17 @@ module.exports = function(serializer) {
         }))
       })
     }))
-
   })
 
   tape('sink handle closed gracefully', function (t) {
-
-    var A = mux(client, null, serializer) ()
-    var B = mux(null, client, serializer) ({
+    const A = mux(client, null, serializer)()
+    const B = mux(null, client, serializer)({
       things: function () {
-        throw "should not be called"
+        throw new Error('should not be called')
       }
     })
 
-    var s = A.createStream()
+    const s = A.createStream()
     pull(
       s,
       process.env.TEST_VERBOSE ? pull.through(console.log) : null,
@@ -104,7 +99,7 @@ module.exports = function(serializer) {
     )
     A.close(function (err) {
       if (err) throw err
-      pull(pull.values([1,2,3,4,5]), A.things(5))
+      pull(pull.values([1, 2, 3, 4, 5]), A.things(5))
 
       // sinks are hard to test
       // once closed, the sink (A.things) just aborts early
@@ -118,15 +113,14 @@ module.exports = function(serializer) {
   })
 
   tape('close twice', function (t) {
-
-    var A = mux(client, null, serializer) ()
-    var B = mux(null, client, serializer) ({
+    const A = mux(client, null, serializer)()
+    const B = mux(null, client, serializer)({
       hello: function (a, cb) {
-        cb(null, 'hello, '+a)
+        cb(null, 'hello, ' + a)
       }
     })
 
-    var s = A.createStream()
+    const s = A.createStream()
     pull(
       s,
       process.env.TEST_VERBOSE ? pull.through(console.log) : null,
@@ -136,7 +130,7 @@ module.exports = function(serializer) {
     )
 
     A.hello('world', function (err, value) {
-      if(err) throw err
+      if (err) throw err
       if (process.env.TEST_VERBOSE) console.log(value)
       t.equal(value, 'hello, world')
 
@@ -152,16 +146,15 @@ module.exports = function(serializer) {
   })
 
   tape('wait for streams to end before closing', function (t) {
+    const pushable = Pushable()
+    let closed = false; let n = 2; const drained = []
 
-    var pushable = Pushable()
-    var closed = false, n = 2, drained = []
-
-    var A = mux(client, null, serializer) ()
-    var B = mux(null, client, serializer) ({
+    const A = mux(client, null, serializer)()
+    const B = mux(null, client, serializer)({
       stuff: function () { return pushable }
     })
 
-    var s = A.createStream()
+    const s = A.createStream()
     pull(s, B.createStream(), s)
 
     pull(
@@ -180,15 +173,15 @@ module.exports = function(serializer) {
     })
 
     function next () {
-      if(--n) return
-      t.deepEqual(drained, [1,2,3])
+      if (--n) return
+      t.deepEqual(drained, [1, 2, 3])
       t.end()
     }
 
     pushable.push(1)
     setTimeout(function () {
-      //this should have already gotten through,
-      //but should not have closed yet.
+      // this should have already gotten through,
+      // but should not have closed yet.
       t.deepEqual(drained, [1])
       pushable.push(2)
       setTimeout(function () {
@@ -203,18 +196,17 @@ module.exports = function(serializer) {
   })
 
   tape('destroy streams when close(immediate, cb) is used', function (t) {
+    let closed = false; let n = 3; const drained = []
 
-    var closed = false, n = 3, drained = []
-
-    var pushable = Pushable(function () {
+    const pushable = Pushable(function () {
       next()
     })
-    var A = mux(client, null, serializer) ()
-    var B = mux(null, client, serializer) ({
+    const A = mux(client, null, serializer)()
+    const B = mux(null, client, serializer)({
       stuff: function () { return pushable }
     })
 
-    var s = A.createStream()
+    const s = A.createStream()
     pull(s, B.createStream(), s)
 
     pull(
@@ -229,15 +221,15 @@ module.exports = function(serializer) {
     )
 
     function next () {
-      if(--n) return
+      if (--n) return
       t.deepEqual(drained, [1])
       t.end()
     }
 
     pushable.push(1)
     setTimeout(function () {
-      //this should have already gotten through,
-      //but should not have closed yet.
+      // this should have already gotten through,
+      // but should not have closed yet.
       t.deepEqual(drained, [1])
       B.close(true, function () {
         closed = true
@@ -247,9 +239,6 @@ module.exports = function(serializer) {
       pushable.push(2)
     })
   })
-
-
 }
 
-if(!module.parent)
-  module.exports();
+if (!module.parent) { module.exports() }

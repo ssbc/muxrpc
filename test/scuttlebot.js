@@ -1,22 +1,21 @@
 
-var pull = require('pull-stream')
-var tape = require('tape')
-var Muxrpc = require('../')
+const pull = require('pull-stream')
+const tape = require('tape')
+const Muxrpc = require('../')
 
-var manifest = { hello: 'sync' }
-var api = {
+const manifest = { hello: 'sync' }
+const api = {
   hello: function (n) {
-    if(this._emit) this._emit('hello', n)
+    if (this._emit) this._emit('hello', n)
     if (process.env.TEST_VERBOSE) console.log('hello from ' + this.id)
     return n + ':' + this.id
   }
 }
 
 tape('give a muxrpc instance an id', function (t) {
-
-  var bob = Muxrpc(null, manifest)  (api)
-  var alice = Muxrpc(manifest, null)  ()
-  var as = alice.createStream()
+  const bob = Muxrpc(null, manifest)(api)
+  const alice = Muxrpc(manifest, null)()
+  const as = alice.createStream()
   pull(as, bob.createStream(), as)
 
   bob.id = 'Alice'
@@ -28,12 +27,10 @@ tape('give a muxrpc instance an id', function (t) {
   })
 })
 
-
 tape('initialize muxrpc with an id', function (t) {
-
-  var bob = Muxrpc(null, manifest)  (api, null, 'Alice')
-  var alice = Muxrpc(manifest, null)  ()
-  var as = alice.createStream()
+  const bob = Muxrpc(null, manifest)(api, null, 'Alice')
+  const alice = Muxrpc(manifest, null)()
+  const as = alice.createStream()
   pull(as, bob.createStream(), as)
 
   alice.hello('bob', function (err, data) {
@@ -43,14 +40,12 @@ tape('initialize muxrpc with an id', function (t) {
   })
 })
 
-
 tape('emit an event from the called api function', function (t) {
-
   t.plan(3)
 
-  var bob = Muxrpc(null, manifest)  (api)
-  var alice = Muxrpc(manifest, null)  ()
-  var as = alice.createStream()
+  const bob = Muxrpc(null, manifest)(api)
+  const alice = Muxrpc(manifest, null)()
+  const as = alice.createStream()
   pull(as, bob.createStream(), as)
 
   bob.id = 'Alice'

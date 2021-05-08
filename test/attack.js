@@ -1,26 +1,24 @@
 
-
-var tape = require('tape')
-var mux = require('../')
-var pull = require('pull-stream')
-var pair = require('pull-pair')
+const tape = require('tape')
+const mux = require('../')
+const pull = require('pull-stream')
+const pair = require('pull-pair')
 
 function createClient (t) {
-
-  var client = {
-    get   : 'async',
-    read  : 'source',
-    write : 'sink',
-    echo  : 'duplex'
+  const client = {
+    get: 'async',
+    read: 'source',
+    write: 'sink',
+    echo: 'duplex'
   }
 
-  var A = mux(client, null) ()
+  const A = mux(client, null)()
 
-  var B = mux(null, {}) ({
+  const B = mux(null, {})({
     get: function (a, cb) {
-      //root access!! this should never happen!
+      // root access!! this should never happen!
       t.ok(false, 'attacker got in')
-      cb(null, "ACCESS GRANTED")
+      cb(null, 'ACCESS GRANTED')
     },
     read: function () {
       t.ok(false, 'attacker got in')
@@ -36,7 +34,7 @@ function createClient (t) {
     }
   })
 
-  var s = A.createStream()
+  const s = A.createStream()
   pull(
     s,
     process.env.TEST_VERBOSE ? pull.through(console.log) : null,
@@ -49,27 +47,24 @@ function createClient (t) {
 }
 
 tape('request which is not public', function (t) {
-
-  //create a client with a different manifest to the server.
-  //create a server that
+  // create a client with a different manifest to the server.
+  // create a server that
 
   const A = createClient(t)
 
   A.get('foo', function (err, val) {
     t.ok(err)
-    t.notEqual(val, "ACCESS GRANTED")
+    t.notEqual(val, 'ACCESS GRANTED')
     t.end()
   })
-
 })
 
 tape('sink which is not public', function (t) {
-
-  //create a client with a different manifest to the server.
-  var A = createClient(t)
+  // create a client with a different manifest to the server.
+  const A = createClient(t)
 
   pull(
-    pull.values(["ACCESS", "GRANTED"]),
+    pull.values(['ACCESS', 'GRANTED']),
     A.write(null, function (err) {
       t.ok(err)
       t.end()
@@ -78,43 +73,41 @@ tape('sink which is not public', function (t) {
 })
 
 tape('source which is not public', function (t) {
-
-  //create a client with a different manifest to the server.
-  var A = createClient(t)
+  // create a client with a different manifest to the server.
+  const A = createClient(t)
 
   pull(
     A.read(),
     pull.collect(function (err, ary) {
       t.ok(err)
-      t.notDeepEqual(ary, ["ACCESS", "GRANTED"])
+      t.notDeepEqual(ary, ['ACCESS', 'GRANTED'])
       t.end()
     })
   )
 })
 
 tape('duplex which is not public', function (t) {
-
-  //create a client with a different manifest to the server.
-  var A = createClient(t)
+  // create a client with a different manifest to the server.
+  const A = createClient(t)
 
   pull(
     A.read(),
     pull.collect(function (err, ary) {
       t.ok(err)
-      t.notDeepEqual(ary, ["ACCESS", "GRANTED"])
+      t.notDeepEqual(ary, ['ACCESS', 'GRANTED'])
       t.end()
     })
   )
 })
 
 tape('client and server manifest have different types', function (t) {
-  var clientM = { foo: 'async' }
-  var serverM = { foo: 'source' }
+  const clientM = { foo: 'async' }
+  const serverM = { foo: 'source' }
 
-  var A = mux(clientM, null) ()
-  var B = mux(null, serverM) ()
+  const A = mux(clientM, null)()
+  const B = mux(null, serverM)()
 
-  var as = A.createStream()
+  const as = A.createStream()
   pull(as, B.createStream(), as)
 
   A.foo(function (err) {
