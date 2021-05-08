@@ -1,13 +1,13 @@
-'use strict';
-var u = require('./util')
+'use strict'
+const u = require('./util')
 
-var isArray = Array.isArray
+const isArray = Array.isArray
 
 function isFunction (f) {
-  return 'function' === typeof f
+  return typeof f === 'function'
 }
 
-function toArray(str) {
+function toArray (str) {
   return isArray(str) ? str : str.split('.')
 }
 
@@ -53,54 +53,55 @@ create perms:
 */
 
 module.exports = function (opts) {
-  if(isPerms(opts)) return opts
-  if(isFunction(opts)) return {pre: opts}
-  var allow = null
-  var deny = {}
+  if (isPerms(opts)) return opts
+  if (isFunction(opts)) return { pre: opts }
+  let allow = null
+  let deny = {}
 
   function perms (opts) {
-    if(opts.allow) {
+    if (opts.allow) {
       allow = {}
       opts.allow.forEach(function (path) {
         u.set(allow, toArray(path), true)
       })
-    }
-    else allow = null
+    } else allow = null
 
-    if(opts.deny)
+    if (opts.deny) {
       opts.deny.forEach(function (path) {
         u.set(deny, toArray(path), true)
       })
-    else deny = {}
+    } else {
+      deny = {}
+    }
 
     return this
   }
 
-  if(opts) perms(opts)
+  if (opts) perms(opts)
 
   perms.pre = function (name) {
     name = isArray(name) ? name : [name]
-    if(allow && !u.prefix(allow, name))
-      return new Error('method:'+name + ' is not in list of allowed methods')
+    if (allow && !u.prefix(allow, name)) {
+      return new Error('method:' + name + ' is not in list of allowed methods')
+    }
 
-    if(deny && u.prefix(deny, name))
-      return new Error('method:'+name + ' is on list of disallowed methods')
+    if (deny && u.prefix(deny, name)) {
+      return new Error('method:' + name + ' is on list of disallowed methods')
+    }
   }
 
   perms.post = function () {
-    //TODO
+    // TODO
   }
 
-  //alias for pre, used in tests.
+  // alias for pre, used in tests.
   perms.test = function (name) {
     return perms.pre(name)
   }
 
   perms.get = function () {
-    return {allow: allow, deny: deny}
+    return { allow: allow, deny: deny }
   }
 
   return perms
 }
-
-

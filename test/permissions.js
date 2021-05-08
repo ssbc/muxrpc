@@ -1,15 +1,12 @@
 
+const permissions = require('../permissions')
 
-
-var permissions = require('../permissions')
-
-var tape = require('tape')
+const tape = require('tape')
 
 tape('allowlist', function (t) {
+  const p = permissions()
 
-  var p = permissions()
-
-  p({allow: ['foo', 'bar', 'baz']})
+  p({ allow: ['foo', 'bar', 'baz'] })
 
   if (process.env.TEST_VERBOSE) console.log(p)
 
@@ -24,60 +21,49 @@ tape('allowlist', function (t) {
 })
 
 tape('nested allowlist', function (t) {
-  var p = permissions()
+  const p = permissions()
 
-  p({allow: ['foo']})
+  p({ allow: ['foo'] })
 
   t.ifError(p.test(['foo', 'quxx']))
   t.end()
-
 })
 
 tape('nested blocklist', function (t) {
+  const p = permissions()
 
-  var p = permissions()
-
-  p({deny: ['foo']})
+  p({ deny: ['foo'] })
 
   t.ok(p.test(['foo', 'quxx']))
   t.end()
-
 })
-
 
 tape('deep blocklist', function (t) {
+  const p = permissions()
 
-  var p = permissions()
-
-  p({deny: [['foo', 'quxx']]})
+  p({ deny: [['foo', 'quxx']] })
 
   t.ok(p.test(['foo', 'quxx']))
   t.notOk(p.test(['foo', 'bar']))
   t.end()
-
 })
 
-
 tape('deep blocklist, dotted strings', function (t) {
+  const p = permissions()
 
-  var p = permissions()
-
-  p({deny: ['foo.quxx']})
+  p({ deny: ['foo.quxx'] })
 
   t.ok(p.test(['foo', 'quxx']))
   t.notOk(p.test(['foo', 'bar']))
   t.end()
-
 })
 
 tape('matches', function (t) {
+  const p = permissions()
 
+  p({ allow: ['bar', 'foo'], deny: ['foo.quxx'] })
 
-  var p = permissions()
-
-  p({allow: ['bar', 'foo'], deny: ['foo.quxx']})
-
-  function allowed(path) {
+  function allowed (path) {
     t.notOk(p.test(path), 'allowed:' + path)
   }
 

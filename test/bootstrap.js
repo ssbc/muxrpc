@@ -1,11 +1,11 @@
-var pull = require('pull-stream')
-var tape = require('tape')
-var Muxrpc = require('../')
+const pull = require('pull-stream')
+const tape = require('tape')
+const Muxrpc = require('../')
 
-var manifest = { hello: 'sync', manifest: 'sync' }
-var api = {
+const manifest = { hello: 'sync', manifest: 'sync' }
+const api = {
   hello: function (n) {
-    if(this._emit) this._emit('hello', n)
+    if (this._emit) this._emit('hello', n)
     if (process.env.TEST_VERBOSE) console.log('hello from ' + this.id)
     return n + ':' + this.id
   },
@@ -15,18 +15,17 @@ var api = {
 }
 
 tape('emit an event from the called api function', function (t) {
-
   t.plan(6)
 
-  var bob = Muxrpc(null, manifest)  (api)
-  var cb = function (err, val, emitter) {
+  const bob = Muxrpc(null, manifest)(api)
+  const cb = function (err, val, emitter) {
     t.notOk(err)
     t.deepEqual(manifest, val)
     t.ok(emitter)
   }
 
-  var alice = Muxrpc(cb) ()
-  var as = alice.createStream()
+  const alice = Muxrpc(cb)()
+  const as = alice.createStream()
   pull(as, bob.createStream(), as)
 
   bob.id = 'Alice'

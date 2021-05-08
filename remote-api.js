@@ -1,29 +1,30 @@
-'use strict';
-var u = require('./util')
-var explain = require('explain-error')
+'use strict'
+const u = require('./util')
+const explain = require('explain-error')
 
 function isFunction (f) {
-  return 'function' === typeof f
+  return typeof f === 'function'
 }
 
 function isObject (o) {
-  return o && 'object' === typeof o
+  return o && typeof o === 'object'
 }
 
-//add all the api methods to the emitter recursively
+// add all the api methods to the emitter recursively
 function recurse (obj, manifest, path, remoteCall) {
-  for(var name in manifest) (function (name, type) {
-    var _path = path ? path.concat(name) : [name]
-    obj[name] =
+  for (const name in manifest) {
+    (function (name, type) {
+      const _path = path ? path.concat(name) : [name]
+      obj[name] =
         isObject(type)
-      ? recurse({}, type, _path, remoteCall)
-      : function () {
-          return remoteCall(type, _path, [].slice.call(arguments))
-        }
-  })(name, manifest[name])
+          ? recurse({}, type, _path, remoteCall)
+          : function () {
+            return remoteCall(type, _path, [].slice.call(arguments))
+          }
+    })(name, manifest[name])
+  }
   return obj
 }
-
 
 function noop (err) {
   if (err) {
@@ -39,18 +40,21 @@ const promiseTypes = [
 module.exports = function (obj, manifest, _remoteCall, bootstrap) {
   obj = obj || {}
 
-  function remoteCall(type, name, args) {
-    var cb = isFunction (args[args.length - 1])
+  function remoteCall (type, name, args) {
+    const cb = isFunction(args[args.length - 1])
       ? args.pop()
       : promiseTypes.includes(type)
         ? null
         : noop
-    var value
+    let value
 
     if (typeof cb === 'function') {
       // Callback style
-      try { value = _remoteCall(type, name, args, cb) }
-      catch(err) { return u.errorAsStreamOrCb(type, err, cb)}
+      try {
+        value = _remoteCall(type, name, args, cb)
+      } catch (err) {
+        return u.errorAsStreamOrCb(type, err, cb)
+      }
 
       return value
     } else {
@@ -67,11 +71,9 @@ module.exports = function (obj, manifest, _remoteCall, bootstrap) {
     }
   }
 
-
   if (bootstrap) {
     remoteCall('async', 'manifest', [function (err, remote) {
-      if(err)
-        return bootstrap(err)
+      if (err) return bootstrap(err)
       recurse(obj, remote, null, remoteCall)
       bootstrap(null, remote, obj)
     }])
@@ -81,4 +83,3 @@ module.exports = function (obj, manifest, _remoteCall, bootstrap) {
 
   return obj
 }
-

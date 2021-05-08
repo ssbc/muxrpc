@@ -1,62 +1,78 @@
 'use strict'
-var pull = require('pull-stream')
+const pull = require('pull-stream')
 // wrap pull streams around packet-stream's weird streams.
 
 function once (fn) {
-  var done = false
+  let done = false
   return function (err, val) {
-    if(done) return
+    if (done) return
     done = true
     fn(err, val)
   }
 }
 
 module.exports = function (weird, _done) {
-  var buffer = [], ended = false, waiting, abort
+  const buffer = []
+  let ended = false
+  let waiting
+  let abort
 
-  var done = once(function (err, v) {
+  const done = once(function (err, v) {
     _done && _done(err, v)
     // deallocate
     weird = null
-    _done = null    
+    _done = null
     waiting = null
 
-    if(abort) abort(err || true, function () {})
+    if (abort) {
+      abort(err || true, function () {})
+    }
   })
 
   weird.read = function (data, end) {
     ended = ended || end
 
-    if(waiting) {
-      var cb = waiting
+    if (waiting) {
+      const cb = waiting
       waiting = null
       cb(ended, data)
+    } else if (!ended) {
+      buffer.push(data)
     }
-    else if(!ended) buffer.push(data)
 
-    if(ended) done(ended !== true ? ended : null)
+    if (ended) {
+      done(ended !== true ? ended : null)
+    }
   }
 
   return {
     source: function (abort, cb) {
-      if(abort) {
+      if (abort) {
         weird && weird.write(null, abort)
         cb(abort); done(abort !== true ? abort : null)
+      } else if (buffer.length) {
+        cb(null, buffer.shift())
+      } else if (ended) {
+        cb(ended)
+      } else {
+        waiting = cb
       }
-      else if(buffer.length) cb(null, buffer.shift())
-      else if(ended) cb(ended)
-      else waiting = cb
     },
-    sink  : function (read) {
-      if(ended) return read(ended, function () {}), abort = null
+    sink: function (read) {
+      if (ended) {
+        abort = null
+        return read(ended, function () {})
+      }
       abort = read
       pull.drain(function (data) {
-        //TODO: make this should only happen on a UNIPLEX stream.
-        if(ended) return false
+        // TODO: make this should only happen on a UNIPLEX stream.
+        if (ended) return false
         weird.write(data)
       }, function (err) {
-        if(weird && !weird.writeEnd) weird.write(null, err || true)
-        done && done(err)
+        if (weird && !weird.writeEnd) {
+          weird.write(null, err || true)
+        }
+        if (done) done(err)
       })(read)
     }
   }
@@ -64,8 +80,8 @@ module.exports = function (weird, _done) {
 
 function uniplex (s, done) {
   return module.exports(s, function (err) {
-    if(!s.writeEnd) s.write(null, err || true)
-    if(done) done(err)
+    if (!s.writeEnd) s.write(null, err || true)
+    if (done) done(err)
   })
 }
 

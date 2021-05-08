@@ -1,8 +1,8 @@
-var pull = require('pull-stream')
-var mux = require('../')
-var tape = require('tape')
+const pull = require('pull-stream')
+const mux = require('../')
+const tape = require('tape')
 
-function delay(fun) {
+function delay (fun) {
   return function (a, b) {
     setImmediate(function () {
       fun(a, b)
@@ -10,209 +10,202 @@ function delay(fun) {
   }
 }
 
-var client = {
-  hello  : 'async',
+const client = {
+  hello: 'async',
   goodbye: 'async',
-  stuff  : 'source',
-  bstuff : 'source',
-  things : 'sink',
-  echo   : 'duplex',
+  stuff: 'source',
+  bstuff: 'source',
+  things: 'sink',
+  echo: 'duplex',
   suchstreamwow: 'duplex'
 }
 
 module.exports = function (codec) {
+  tape('outer stream ends after close', function (t) {
+    t.plan(4)
 
-tape('outer stream ends after close', function (t) {
+    const A = mux(client, null, codec)()
+    const B = mux(null, client, codec)({
+      hello: function (a, cb) {
+        delay(cb)(null, 'hello, ' + a)
+      },
+      goodbye: function (b, cb) {
+        delay(cb)(null, b)
+      }
+    })
 
-  t.plan(4)
+    A.hello('jim', function (err, value) {
+      if (err) throw err
+      if (process.env.TEST_VERBOSE) console.log(value)
+      t.equal(value, 'hello, jim')
+    })
 
-  var A = mux(client, null, codec) ()
-  var B = mux(null, client, codec) ({
-    hello: function (a, cb) {
-      delay(cb)(null, 'hello, '+a)
-    },
-    goodbye: function(b, cb) {
-      delay(cb)(null, b)
-    }
-  })
+    A.goodbye('bbb', function (err, value) {
+      if (err) throw err
+      if (process.env.TEST_VERBOSE) console.log(value)
+      t.equal(value, 'bbb')
+    })
 
+    const bs = B.createStream()
 
-  A.hello('jim', function (err, value) {
-    if(err) throw err
-    if (process.env.TEST_VERBOSE) console.log(value)
-    t.equal(value, 'hello, jim')
-  })
+    const as = A.createStream()
+    pull(as, bs, as)
 
-  A.goodbye('bbb', function (err, value) {
-    if(err) throw err
-    if (process.env.TEST_VERBOSE) console.log(value)
-    t.equal(value, 'bbb')
-  })
-
-  var bs = B.createStream()
-
-  var as = A.createStream()
-  pull(as, bs, as)
-
-  A.on('closed', function () {
-    t.ok(true)
-  })
-
-  A.close(function (err) {
-    t.notOk(err)
-  })
-
-})
-
-tape('close after uniplex streams end', function (t) {
-  t.plan(6)
-
-  var A = mux(client, null, codec) ()
-  var B = mux(null, client, codec) ({
-    stuff: function () {
+    A.on('closed', function () {
       t.ok(true)
-      return pull.values([1, 2, 3, 4, 5])
-    }
+    })
+
+    A.close(function (err) {
+      t.notOk(err)
+    })
   })
 
-  pull(A.stuff(), pull.collect(function (err, ary) {
-    t.deepEqual(ary, [1, 2, 3, 4, 5])
-  }))
+  tape('close after uniplex streams end', function (t) {
+    t.plan(7)
 
-  var bs = B.createStream()
-  var as = A.createStream()
-  pull(as, bs, as)
+    const A = mux(client, null, codec)()
+    const B = mux(null, client, codec)({
+      stuff: function () {
+        t.ok(true)
+        return pull.values([1, 2, 3, 4, 5])
+      }
+    })
 
-  B.on('closed', function () {
-    if (process.env.TEST_VERBOSE) console.log('B emits "closed"')
-    t.ok(true)
-  })
+    pull(A.stuff(), pull.collect(function (err, ary) {
+      t.error(err)
+      t.deepEqual(ary, [1, 2, 3, 4, 5])
+    }))
 
-  A.on('closed', function () {
-    if (process.env.TEST_VERBOSE) console.log('A emits "closed"')
-    t.ok(true)
-  })
+    const bs = B.createStream()
+    const as = A.createStream()
+    pull(as, bs, as)
 
-  B.close(function (err) {
-    if (process.env.TEST_VERBOSE) console.log('B CLOSE')
-    t.notOk(err, 'bs is closed')
-  })
-
-  A.close(function (err) {
-    if (process.env.TEST_VERBOSE) console.log('A CLOSE')
-    t.notOk(err, 'as is closed')
-  })
-})
-
-tape('close after uniplex streams end 2', function (t) {
-  t.plan(4)
-
-  var A = mux(client, null, codec) ()
-  var B = mux(null, client, codec) ({
-    things: function () {
+    B.on('closed', function () {
+      if (process.env.TEST_VERBOSE) console.log('B emits "closed"')
       t.ok(true)
-      return pull.collect(function (err, ary) {
+    })
+
+    A.on('closed', function () {
+      if (process.env.TEST_VERBOSE) console.log('A emits "closed"')
+      t.ok(true)
+    })
+
+    B.close(function (err) {
+      if (process.env.TEST_VERBOSE) console.log('B CLOSE')
+      t.notOk(err, 'bs is closed')
+    })
+
+    A.close(function (err) {
+      if (process.env.TEST_VERBOSE) console.log('A CLOSE')
+      t.notOk(err, 'as is closed')
+    })
+  })
+
+  tape('close after uniplex streams end 2', function (t) {
+    t.plan(5)
+
+    const A = mux(client, null, codec)()
+    const B = mux(null, client, codec)({
+      things: function () {
+        t.ok(true)
+        return pull.collect(function (err, ary) {
+          t.error(err)
+          t.deepEqual(ary, [1, 2, 3, 4, 5])
+        })
+      }
+    })
+
+    pull(pull.values([1, 2, 3, 4, 5]), A.things())
+
+    const bs = B.createStream()
+    const as = A.createStream()
+
+    pull(as, bs, as)
+
+    B.close(function (err) {
+      if (process.env.TEST_VERBOSE) console.log('B CLOSE')
+      t.notOk(err, 'bs is closed')
+    })
+
+    A.close(function (err) {
+      if (process.env.TEST_VERBOSE) console.log('A CLOSE')
+      t.notOk(err, 'as is closed')
+    })
+  })
+
+  tape('close after both sides of a duplex stream ends', function (t) {
+    t.plan(8)
+
+    const A = mux(client, null, codec)()
+    const B = mux(null, client, codec)({
+      echo: function () {
+        return pull.through(
+          process.env.TEST_VERBOSE ? console.log : () => {},
+          () => { t.ok(true) }
+        )
+      }
+    })
+
+    const bs = B.createStream()
+    const as = A.createStream()
+
+    pull(
+      pull.values([1, 2, 3, 4, 5]),
+      A.echo(),
+      pull.collect(function (err, ary) {
+        if (err) throw err
         t.deepEqual(ary, [1, 2, 3, 4, 5])
       })
-    }
-  })
+    )
 
-  pull(pull.values([1, 2, 3, 4, 5]), A.things())
+    pull(as, bs, as)
 
-  var bs = B.createStream()
-  var as = A.createStream()
+    t.notOk(B.closed)
+    t.notOk(A.closed)
 
-  pull(as, bs, as)
-
-  B.close(function (err) {
-    if (process.env.TEST_VERBOSE) console.log('B CLOSE')
-    t.notOk(err, 'bs is closed')
-  })
-
-  A.close(function (err) {
-    if (process.env.TEST_VERBOSE) console.log('A CLOSE')
-    t.notOk(err, 'as is closed')
-  })
-})
-
-tape('close after both sides of a duplex stream ends', function (t) {
-
-  t.plan(8)
-
-  var A = mux(client, null, codec) ()
-  var B = mux(null, client, codec) ({
-    echo: function () {
-      return pull.through(
-        process.env.TEST_VERBOSE ? console.log : () => {},
-        () => { t.ok(true) }
-      )
-    }
-  })
-
-  var bs = B.createStream()
-  var as = A.createStream()
-
-  pull(
-    pull.values([1, 2, 3, 4, 5]),
-    A.echo(),
-    pull.collect(function (err, ary) {
-      if(err) throw err
-      t.deepEqual(ary, [1,2,3,4,5])
+    B.on('closed', function () {
+      t.ok(true)
     })
-  )
 
-  pull(as, bs, as)
+    A.on('closed', function () {
+      t.ok(true)
+    })
 
-  t.notOk(B.closed)
-  t.notOk(A.closed)
+    B.close(function (err) {
+      if (process.env.TEST_VERBOSE) console.log('B CLOSE')
+      t.notOk(err, 'bs is closed')
+    })
 
-  B.on('closed', function () {
-    t.ok(true)
+    A.close(function (err) {
+      if (process.env.TEST_VERBOSE) console.log('A CLOSE', err)
+      t.notOk(err, 'as is closed')
+    })
   })
 
-  A.on('closed', function () {
-    t.ok(true)
+  tape('closed is emitted when stream disconnects', function (t) {
+    t.plan(2)
+    const A = mux(client, null)()
+    A.on('closed', function (err) {
+      if (process.env.TEST_VERBOSE) console.log('EMIT CLOSED')
+      t.notOk(err)
+    })
+    pull(pull.empty(), A.createStream(function (err) {
+      //    console.log(err)
+      t.ok(err) // end of parent stream
+    }), pull.drain())
   })
 
-  B.close(function (err) {
-    if (process.env.TEST_VERBOSE) console.log('B CLOSE')
-    t.notOk(err, 'bs is closed')
+  tape('closed is emitted with error when stream errors', function (t) {
+    t.plan(2)
+    const A = mux(client, null, codec)()
+    A.on('closed', function (err) {
+      t.notOk(err)
+    })
+    pull(pull.empty(), A.createStream(function (err) {
+      if (process.env.TEST_VERBOSE) console.log(err)
+      t.notOk(err) // end of parent stream
+    }), pull.drain())
   })
-
-  A.close(function (err) {
-    if (process.env.TEST_VERBOSE) console.log('A CLOSE', err)
-    t.notOk(err, 'as is closed')
-  })
-
-
-})
-
-tape('closed is emitted when stream disconnects', function (t) {
-  t.plan(2)
-  var A = mux(client, null) ()
-  A.on('closed', function (err) {
-    if (process.env.TEST_VERBOSE) console.log('EMIT CLOSED')
-    t.notOk(err)
-  })
-  pull(pull.empty(), A.createStream(function (err) {
-//    console.log(err)
-    t.ok(err) //end of parent stream
-  }), pull.drain())
-})
-
-tape('closed is emitted with error when stream errors', function (t) {
-  t.plan(2)
-  var A = mux(client, null, codec) ()
-  A.on('closed', function (err) {
-    t.notOk(err)
-  })
-  pull(pull.empty(), A.createStream(function (err) {
-    if (process.env.TEST_VERBOSE) console.log(err)
-    t.notOk(err) //end of parent stream
-  }), pull.drain())
-})
-
 }
 
-if(!module.parent)
-  module.exports(function (e) { return e })
+if (!module.parent) { module.exports(function (e) { return e }) }
