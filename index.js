@@ -6,9 +6,9 @@ const createRemoteApi = require('./remote-api')
 const createLocalApi = require('./local-api')
 
 function createMuxrpc (remoteManifest, localManifest, localApi, id, perms, codec, legacy) {
-  let bootstrap
+  let bootstrapCB
   if (typeof remoteManifest === 'function') {
-    bootstrap = remoteManifest
+    bootstrapCB = remoteManifest
     remoteManifest = {}
   }
 
@@ -50,7 +50,7 @@ function createMuxrpc (remoteManifest, localManifest, localApi, id, perms, codec
       if (ws.closed) throw new Error('stream is closed')
       return ws.remoteCall(type, name, args, cb)
     },
-    bootstrap
+    bootstrapCB
   )
 
   // legacy local emit, from when remote emit was supported.
