@@ -1,27 +1,31 @@
 'use strict'
-const u = require('./util')
 const explain = require('explain-error')
+const u = require('./util')
 
-// add all the api methods to the emitter recursively
+/**
+ * Recursively traverse the `obj` according to the `manifest` shape,
+ * replacing all leafs with `remoteCall`. Returns the mutated `obj`.
+ */
 function recurse (obj, manifest, path, remoteCall) {
   for (const name in manifest) {
-    const val = manifest[name] // nested-manifest or type string
+    const val = manifest[name]
     const nestedPath = path ? path.concat(name) : [name]
-    obj[name] =
-      val && typeof val === 'object'
-        ? recurse({}, val, nestedPath, remoteCall)
-        : (...args) => remoteCall(val, nestedPath, args)
+    if (val && typeof val === 'object') {
+      const nestedManifest = val
+      obj[name] = recurse({}, nestedManifest, nestedPath, remoteCall)
+    } else {
+      const type = val
+      obj[name] = (...args) => remoteCall(type, nestedPath, args)
+    }
   }
   return obj
 }
 
 function noop (err) {
-  if (err) {
-    throw explain(err, 'callback not provided')
-  }
+  if (err) throw explain(err, 'callback not provided')
 }
 
-module.exports = function createRemoteApi (obj, manifest, _remoteCall, bootstrap) {
+function createRemoteApi (obj, manifest, actualRemoteCall, bootstrapCB) {
   obj = obj || {}
 
   function remoteCall (type, name, args) {
@@ -35,7 +39,7 @@ module.exports = function createRemoteApi (obj, manifest, _remoteCall, bootstrap
       let value
       // Callback style
       try {
-        value = _remoteCall(type, name, args, cb)
+        value = actualRemoteCall(type, name, args, cb)
       } catch (err) {
         return u.errorAsStreamOrCb(type, err, cb)
       }
@@ -43,7 +47,7 @@ module.exports = function createRemoteApi (obj, manifest, _remoteCall, bootstrap
     } else {
       // Promise style
       return new Promise((resolve, reject) => {
-        _remoteCall(type, name, args, (err, val) => {
+        actualRemoteCall(type, name, args, (err, val) => {
           if (err) reject(err)
           else resolve(val)
         })
@@ -51,11 +55,11 @@ module.exports = function createRemoteApi (obj, manifest, _remoteCall, bootstrap
     }
   }
 
-  if (bootstrap) {
-    remoteCall('async', 'manifest', [function (err, remote) {
-      if (err) return bootstrap(err)
-      recurse(obj, remote, null, remoteCall)
-      bootstrap(null, remote, obj)
+  if (bootstrapCB) {
+    remoteCall('async', 'manifest', [function (err, manifest) {
+      if (err) return bootstrapCB(err)
+      recurse(obj, manifest, null, remoteCall)
+      bootstrapCB(null, manifest, obj)
     }])
   } else {
     recurse(obj, manifest, null, remoteCall)
@@ -63,3 +67,5 @@ module.exports = function createRemoteApi (obj, manifest, _remoteCall, bootstrap
 
   return obj
 }
+
+module.exports = createRemoteApi
