@@ -1,14 +1,16 @@
+const tape = require('tape')
 const pull = require('pull-stream')
 const mux = require('../')
-const tape = require('tape')
 
 function delay (fun) {
-  return function (a, b) {
-    setImmediate(function () {
+  return (a, b) => {
+    setImmediate(() => {
       fun(a, b)
     })
   }
 }
+
+const id = (e) => e
 
 const client = {
   hello: 'async',
@@ -21,26 +23,26 @@ const client = {
 }
 
 module.exports = function (codec) {
-  tape('outer stream ends after close', function (t) {
+  tape('outer stream ends after close', (t) => {
     t.plan(4)
 
     const A = mux(client, null, codec)()
     const B = mux(null, client, codec)({
-      hello: function (a, cb) {
+      hello (a, cb) {
         delay(cb)(null, 'hello, ' + a)
       },
-      goodbye: function (b, cb) {
+      goodbye (b, cb) {
         delay(cb)(null, b)
       }
     })
 
-    A.hello('jim', function (err, value) {
+    A.hello('jim', (err, value) => {
       if (err) throw err
       if (process.env.TEST_VERBOSE) console.log(value)
       t.equal(value, 'hello, jim')
     })
 
-    A.goodbye('bbb', function (err, value) {
+    A.goodbye('bbb', (err, value) => {
       if (err) throw err
       if (process.env.TEST_VERBOSE) console.log(value)
       t.equal(value, 'bbb')
@@ -51,27 +53,27 @@ module.exports = function (codec) {
     const as = A.createStream()
     pull(as, bs, as)
 
-    A.on('closed', function () {
+    A.on('closed', () => {
       t.ok(true)
     })
 
-    A.close(function (err) {
+    A.close((err) => {
       t.notOk(err)
     })
   })
 
-  tape('close after uniplex streams end', function (t) {
+  tape('close after uniplex streams end', (t) => {
     t.plan(7)
 
     const A = mux(client, null, codec)()
     const B = mux(null, client, codec)({
-      stuff: function () {
+      stuff () {
         t.ok(true)
         return pull.values([1, 2, 3, 4, 5])
       }
     })
 
-    pull(A.stuff(), pull.collect(function (err, ary) {
+    pull(A.stuff(), pull.collect((err, ary) => {
       t.error(err)
       t.deepEqual(ary, [1, 2, 3, 4, 5])
     }))
@@ -80,35 +82,35 @@ module.exports = function (codec) {
     const as = A.createStream()
     pull(as, bs, as)
 
-    B.on('closed', function () {
+    B.on('closed', () => {
       if (process.env.TEST_VERBOSE) console.log('B emits "closed"')
       t.ok(true)
     })
 
-    A.on('closed', function () {
+    A.on('closed', () => {
       if (process.env.TEST_VERBOSE) console.log('A emits "closed"')
       t.ok(true)
     })
 
-    B.close(function (err) {
+    B.close((err) => {
       if (process.env.TEST_VERBOSE) console.log('B CLOSE')
       t.notOk(err, 'bs is closed')
     })
 
-    A.close(function (err) {
+    A.close((err) => {
       if (process.env.TEST_VERBOSE) console.log('A CLOSE')
       t.notOk(err, 'as is closed')
     })
   })
 
-  tape('close after uniplex streams end 2', function (t) {
+  tape('close after uniplex streams end 2', (t) => {
     t.plan(5)
 
     const A = mux(client, null, codec)()
     const B = mux(null, client, codec)({
-      things: function () {
+      things () {
         t.ok(true)
-        return pull.collect(function (err, ary) {
+        return pull.collect((err, ary) => {
           t.error(err)
           t.deepEqual(ary, [1, 2, 3, 4, 5])
         })
@@ -122,23 +124,23 @@ module.exports = function (codec) {
 
     pull(as, bs, as)
 
-    B.close(function (err) {
+    B.close((err) => {
       if (process.env.TEST_VERBOSE) console.log('B CLOSE')
       t.notOk(err, 'bs is closed')
     })
 
-    A.close(function (err) {
+    A.close((err) => {
       if (process.env.TEST_VERBOSE) console.log('A CLOSE')
       t.notOk(err, 'as is closed')
     })
   })
 
-  tape('close after both sides of a duplex stream ends', function (t) {
+  tape('close after both sides of a duplex stream ends', (t) => {
     t.plan(8)
 
     const A = mux(client, null, codec)()
     const B = mux(null, client, codec)({
-      echo: function () {
+      echo () {
         return pull.through(
           process.env.TEST_VERBOSE ? console.log : () => {},
           () => { t.ok(true) }
@@ -152,7 +154,7 @@ module.exports = function (codec) {
     pull(
       pull.values([1, 2, 3, 4, 5]),
       A.echo(),
-      pull.collect(function (err, ary) {
+      pull.collect((err, ary) => {
         if (err) throw err
         t.deepEqual(ary, [1, 2, 3, 4, 5])
       })
@@ -163,49 +165,49 @@ module.exports = function (codec) {
     t.notOk(B.closed)
     t.notOk(A.closed)
 
-    B.on('closed', function () {
+    B.on('closed', () => {
       t.ok(true)
     })
 
-    A.on('closed', function () {
+    A.on('closed', () => {
       t.ok(true)
     })
 
-    B.close(function (err) {
+    B.close((err) => {
       if (process.env.TEST_VERBOSE) console.log('B CLOSE')
       t.notOk(err, 'bs is closed')
     })
 
-    A.close(function (err) {
+    A.close((err) => {
       if (process.env.TEST_VERBOSE) console.log('A CLOSE', err)
       t.notOk(err, 'as is closed')
     })
   })
 
-  tape('closed is emitted when stream disconnects', function (t) {
+  tape('closed is emitted when stream disconnects', (t) => {
     t.plan(2)
     const A = mux(client, null)()
-    A.on('closed', function (err) {
+    A.on('closed', (err) => {
       if (process.env.TEST_VERBOSE) console.log('EMIT CLOSED')
       t.notOk(err)
     })
-    pull(pull.empty(), A.createStream(function (err) {
+    pull(pull.empty(), A.createStream((err) => {
       //    console.log(err)
       t.ok(err) // end of parent stream
     }), pull.drain())
   })
 
-  tape('closed is emitted with error when stream errors', function (t) {
+  tape('closed is emitted with error when stream errors', (t) => {
     t.plan(2)
     const A = mux(client, null, codec)()
-    A.on('closed', function (err) {
+    A.on('closed', (err) => {
       t.notOk(err)
     })
-    pull(pull.empty(), A.createStream(function (err) {
+    pull(pull.empty(), A.createStream((err) => {
       if (process.env.TEST_VERBOSE) console.log(err)
       t.notOk(err) // end of parent stream
     }), pull.drain())
   })
 }
 
-if (!module.parent) { module.exports(function (e) { return e }) }
+if (!module.parent) { module.exports(id) }

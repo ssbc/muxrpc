@@ -1,13 +1,12 @@
-
-const mux = require('../')
 const tape = require('tape')
 const pull = require('pull-stream')
 const Abortable = require('pull-abortable')
+const mux = require('../')
 
-function id (e) { return e }
+const id = (e) => e
 
 module.exports = function (serializer) {
-  tape('stream abort', function (t) {
+  tape('stream abort', (t) => {
     t.plan(3)
     const abortable = Abortable()
     const client = {
@@ -16,13 +15,13 @@ module.exports = function (serializer) {
 
     const A = mux(client, null, serializer)()
     const B = mux(null, client, serializer)({
-      drainAbort: function (n) {
+      drainAbort: (n) => {
         return pull(
-          pull.through(function () {
+          pull.through(() => {
             if (--n) return
             abortable.abort()
           }),
-          pull.collect(function (err, ary) {
+          pull.collect((err, ary) => {
             t.match(err.message, /unexpected end of parent stream/)
             if (process.env.TEST_VERBOSE) console.log(ary)
             t.deepEqual(ary, [1, 2, 3])
@@ -39,13 +38,13 @@ module.exports = function (serializer) {
     const sent = []
 
     pull(
-      pull.values([1, 2, 3, 4, 5, 6, 7, 8, 9, 10], function (abort) {
+      pull.values([1, 2, 3, 4, 5, 6, 7, 8, 9, 10], (abort) => {
         if (process.env.TEST_VERBOSE) console.log(abort)
         t.ok(sent.length < 10, 'sent is correct')
         t.end()
       }),
-      pull.asyncMap(function (data, cb) {
-        setImmediate(function () {
+      pull.asyncMap((data, cb) => {
+        setImmediate(() => {
           cb(null, data)
         })
       }),

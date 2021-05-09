@@ -1,10 +1,9 @@
-
 const tape = require('tape')
 const m = require('../util')
 const mount = m.mount
 const unmount = m.unmount
 
-tape('mount manifest at root', function (t) {
+tape('mount manifest at root', (t) => {
   const manf = {}
 
   mount(manf, [], { thing: 'async' })
@@ -18,15 +17,15 @@ tape('mount manifest at root', function (t) {
   t.end()
 })
 
-tape('without mount without path should throw', function (t) {
-  t.throws(function () {
+tape('without mount without path should throw', (t) => {
+  t.throws(() => {
     mount({}, { thing: 'async' })
   })
 
   t.end()
 })
 
-tape('unmount', function (t) {
+tape('unmount', (t) => {
   const manf = {}
 
   mount(manf, ['foo'], { one: 'async' })
@@ -41,7 +40,7 @@ tape('unmount', function (t) {
   t.end()
 })
 
-tape('deep unmount', function (t) {
+tape('deep unmount', (t) => {
   const manf = {}
 
   mount(manf, ['foo'], { one: 'async' })
@@ -56,7 +55,7 @@ tape('deep unmount', function (t) {
   t.end()
 })
 
-tape('deep unmount 2', function (t) {
+tape('deep unmount 2', (t) => {
   const manf = {}
 
   m.mount(manf, ['foo', 'bar'], { two: 'async' })

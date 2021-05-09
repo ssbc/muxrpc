@@ -1,7 +1,7 @@
 const tape = require('tape')
 const pull = require('pull-stream')
-const mux = require('../')
 const cont = require('cont')
+const mux = require('../')
 
 const api = {
   get: 'async',
@@ -16,9 +16,7 @@ const api = {
   }
 }
 
-function id (e) {
-  return e
-}
+const id = (e) => e
 
 const store = {
   foo: 1,
@@ -32,21 +30,21 @@ function createServerAPI (store) {
   // this wraps a session.
 
   const session = {
-    whoami: function (cb) {
+    whoami (cb) {
       cb(null, { okay: true, user: name })
     },
-    get: function (key, cb) {
+    get (key, cb) {
       return cb(null, store[key])
     },
-    put: function (key, value, cb) {
+    put (key, value, cb) {
       store[key] = value
       cb()
     },
-    del: function (key, cb) {
+    del (key, cb) {
       delete store[key]
       cb()
     },
-    read: function () {
+    read () {
       return pull.values([1, 2, 3])
     }
   }
@@ -60,7 +58,7 @@ function createClientAPI () {
   return mux(api, null, id)()
 }
 
-tape('secure rpc', function (t) {
+tape('secure rpc', (t) => {
   const server = createServerAPI(store)
   const client = createClientAPI()
 
@@ -70,27 +68,27 @@ tape('secure rpc', function (t) {
   pull(cs, ss, cs)
 
   cont.para([
-    function (cb) {
-      client.get('foo', function (err) {
+    (cb) => {
+      client.get('foo', (err) => {
         t.notOk(err); cb()
       })
     },
-    function (cb) {
-      client.put('foo', function (err) {
+    (cb) => {
+      client.put('foo', (err) => {
         t.ok(err); cb()
       })
     },
-    function (cb) {
-      client.del('foo', function (err) {
+    (cb) => {
+      client.del('foo', (err) => {
         t.ok(err); cb()
       })
     },
-    function (cb) {
-      pull(client.read(), pull.collect(function (err) {
+    (cb) => {
+      pull(client.read(), pull.collect((err) => {
         t.ok(err); cb()
       }))
     }
-  ])(function () {
+  ])(() => {
     t.end()
   })
 })

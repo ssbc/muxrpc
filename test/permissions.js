@@ -1,7 +1,5 @@
-
-const permissions = require('../permissions')
-
 const tape = require('tape')
+const permissions = require('../permissions')
 
 tape('allowlist', function (t) {
   const p = permissions()
