@@ -1,22 +1,16 @@
 'use strict'
 const u = require('./util')
 
-const isArray = Array.isArray
-
-function isFunction (f) {
-  return typeof f === 'function'
-}
-
 function toArray (str) {
-  return isArray(str) ? str : str.split('.')
+  return Array.isArray(str) ? str : str.split('.')
 }
 
 function isPerms (p) {
   return (
     p &&
-    isFunction(p.pre) &&
-    isFunction(p.test) &&
-    isFunction(p.post)
+    typeof p.pre === 'function' &&
+    typeof p.test === 'function' &&
+    typeof p.post === 'function'
   )
 }
 
@@ -52,24 +46,26 @@ create perms:
   }
 */
 
-module.exports = function (opts) {
+module.exports = function Permissions (opts) {
   if (isPerms(opts)) return opts
-  if (isFunction(opts)) return { pre: opts }
+  if (typeof opts === 'function') return { pre: opts }
   let allow = null
   let deny = {}
 
   function perms (opts) {
     if (opts.allow) {
       allow = {}
-      opts.allow.forEach(function (path) {
+      for (const path of opts.allow) {
         u.set(allow, toArray(path), true)
-      })
-    } else allow = null
+      }
+    } else {
+      allow = null
+    }
 
     if (opts.deny) {
-      opts.deny.forEach(function (path) {
+      for (const path of opts.deny) {
         u.set(deny, toArray(path), true)
-      })
+      }
     } else {
       deny = {}
     }
@@ -79,29 +75,25 @@ module.exports = function (opts) {
 
   if (opts) perms(opts)
 
-  perms.pre = function (name) {
-    name = isArray(name) ? name : [name]
+  perms.pre = (name) => {
+    name = Array.isArray(name) ? name : [name]
     if (allow && !u.prefix(allow, name)) {
-      return new Error('method:' + name + ' is not in list of allowed methods')
+      return new Error(`method:${name} is not in list of allowed methods`)
     }
 
     if (deny && u.prefix(deny, name)) {
-      return new Error('method:' + name + ' is on list of disallowed methods')
+      return new Error(`method:${name} is on list of disallowed methods`)
     }
   }
 
-  perms.post = function () {
+  perms.post = () => {
     // TODO
   }
 
   // alias for pre, used in tests.
-  perms.test = function (name) {
-    return perms.pre(name)
-  }
+  perms.test = (name) => perms.pre(name)
 
-  perms.get = function () {
-    return { allow: allow, deny: deny }
-  }
+  perms.get = () => ({ allow, deny })
 
   return perms
 }

@@ -5,35 +5,23 @@ const goodbye = require('pull-goodbye')
 const u = require('./util')
 const explain = require('explain-error')
 
-function isFunction (f) {
-  return typeof f === 'function'
-}
-
-function isSource (t) { return t === 'source' }
-function isSink (t) { return t === 'sink' }
-function isDuplex (t) { return t === 'duplex' }
-function isSync (t) { return t === 'sync' }
-function isAsync (t) { return t === 'async' }
-function isRequest (t) { return isSync(t) || isAsync(t) }
-function isStream (t) { return isSource(t) || isSink(t) || isDuplex(t) }
-
 module.exports = function initStream (localCall, codec, onClose) {
   let ps = PacketStream({
-    message: function () {
+    message () {
       // if (isString(msg)) return
       // if (msg.length > 0 && isString(msg[0]))
       //   localCall('msg', 'emit', msg)
     },
-    request: function (opts, cb) {
+    request (opts, cb) {
       if (!Array.isArray(opts.args)) {
-        return cb(new Error('invalid request, args should be array, was:' + JSON.stringify(opts)))
+        return cb(new Error(`invalid request, args should be array, was: ${JSON.stringify(opts)}`))
       }
       const name = opts.name
       const args = opts.args
       let inCB = false
       let called = false
 
-      args.push(function (err, value) {
+      args.push((err, value) => {
         called = true
         inCB = true
         cb(err, value)
@@ -47,33 +35,37 @@ module.exports = function initStream (localCall, codec, onClose) {
         cb(err)
       }
     },
-    stream: function (stream) {
-      stream.read = function (data, end) {
+    stream (stream) {
+      stream.read = function read (data, end) {
         // how would this actually happen?
         if (end) return stream.write(null, end)
 
-        const name = data.name
-        const type = data.type
+        const { name, type, args } = data
         let err, value
 
         stream.read = null
 
-        if (!isStream(type)) {
-          return stream.write(null, new Error('unsupported stream type:' + type))
+        if (!u.isStream(type)) {
+          return stream.write(null, new Error(`unsupported stream type: ${type}`))
         }
 
         try {
-          value = localCall(type, name, data.args)
+          value = localCall(type, name, args)
         } catch (_err) {
           err = _err
         }
 
-        const _stream = pullWeird[
-          { source: 'sink', sink: 'source' }[type] || 'duplex'
-        ](stream)
+        const antiType =
+          type === 'source'
+            ? 'sink'
+            : type === 'sink'
+              ? 'source'
+              : 'duplex'
+        const _stream = pullWeird[antiType](stream)
 
         return u.pipeToStream(
-          type, _stream,
+          type,
+          _stream,
           err ? u.errorAsStream(type, err) : value
         )
 
@@ -86,7 +78,7 @@ module.exports = function initStream (localCall, codec, onClose) {
       }
     },
 
-    close: function (err) {
+    close (err) {
       ps = null // deallocate
       ws.ended = true
       if (ws.closed) return
@@ -99,7 +91,7 @@ module.exports = function initStream (localCall, codec, onClose) {
     }
   })
 
-  let ws = goodbye(pullWeird(ps, function () {
+  let ws = goodbye(pullWeird(ps, () => {
     // this error will be handled in PacketStream.close
   }))
 
@@ -108,17 +100,17 @@ module.exports = function initStream (localCall, codec, onClose) {
   ws.remoteCall = function (type, name, args, cb) {
     if (name === 'emit') return ps.message(args)
 
-    if (!(isRequest(type) || isStream(type))) {
-      throw new Error('unsupported type:' + JSON.stringify(type))
+    if (!(u.isRequest(type) || u.isStream(type))) {
+      throw new Error(`unsupported type: ${JSON.stringify(type)}`)
     }
 
-    if (isRequest(type)) {
-      return ps.request({ name: name, args: args }, cb)
+    if (u.isRequest(type)) {
+      return ps.request({ name, args }, cb)
     }
 
     const ws = ps.stream()
     const s = pullWeird[type](ws, cb)
-    ws.write({ name: name, args: args, type: type })
+    ws.write({ name, args, type })
     return s
   }
 
@@ -133,7 +125,7 @@ module.exports = function initStream (localCall, codec, onClose) {
   }
 
   ws.close = function (err, cb) {
-    if (isFunction(err)) {
+    if (typeof err === 'function') {
       cb = err
       err = false
     }
@@ -147,7 +139,7 @@ module.exports = function initStream (localCall, codec, onClose) {
       return
     }
 
-    ps.close(function (err) {
+    ps.close((err) => {
       if (cb) cb(err)
       else if (err) throw explain(err, 'no callback provided for muxrpc close')
     })
