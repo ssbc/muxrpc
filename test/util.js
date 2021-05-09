@@ -1,8 +1,7 @@
+const tape = require('tape')
 const u = require('../util')
 
-const tape = require('tape')
-
-tape('set, get, prefix', function (t) {
+tape('set, get, prefix', (t) => {
   const o = {}
   u.set(o, ['foo', 'bar', 'baz'], 24)
 
@@ -19,7 +18,7 @@ tape('set, get, prefix', function (t) {
   t.end()
 })
 
-tape('prefix 0', function (t) {
+tape('prefix 0', (t) => {
   t.ok(
     u.prefix({
       foo: true

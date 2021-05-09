@@ -1,5 +1,6 @@
 const PullSerializer = require('pull-serializer')
 const JSONB = require('json-buffer')
+
 // run tests with jsonb serialization
 const codec = function (stream) {
   return PullSerializer(stream, JSONB)

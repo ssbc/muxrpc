@@ -1,7 +1,7 @@
 const tape = require('tape')
 const pull = require('pull-stream')
-const mux = require('../')
 const cont = require('cont')
+const mux = require('../')
 const Permissions = require('../permissions')
 
 const api = {
@@ -19,9 +19,7 @@ const api = {
   }
 }
 
-function id (e) {
-  return e
-}
+const id = (e) => e
 
 const store = {
   foo: 1,
@@ -40,7 +38,7 @@ function createServerAPI (store) {
     // implement your own auth function.
     // it should just set the allow and deny lists.
 
-    login: function (opts, cb) {
+    login (opts, cb) {
       if (opts.name === 'user' && opts.pass === 'password') { // allow read operations
         perms({ deny: ['put', 'del'], allow: null })
       } else if (opts.name === 'admin' && opts.pass === 'admin') { // allow write operations
@@ -59,28 +57,28 @@ function createServerAPI (store) {
 
       cb(null, { okay: true, name: name })
     },
-    logout: function (cb) {
+    logout (cb) {
       name = 'nobody'
       perms({ allow: ['login'], deny: null })
       cb(null, { okay: true, user: name })
     },
-    whoami: function (cb) {
+    whoami (cb) {
       cb(null, { okay: true, user: name })
     },
-    get: function (key, cb) {
+    get (key, cb) {
       return cb(null, store[key])
     },
-    put: function (key, value, cb) {
+    put (key, value, cb) {
       store[key] = value
       cb()
     },
-    del: function (key, cb) {
+    del (key, cb) {
       delete store[key]
       cb()
     },
-    read: function () {
+    read () {
       return pull.values(
-        Object.keys(store).map(function (k) {
+        Object.keys(store).map((k) => {
           return { key: k, value: store[k] }
         })
       )
@@ -96,7 +94,7 @@ function createClientAPI () {
   return mux(api, null, id)()
 }
 
-tape('secure rpc', function (t) {
+tape('secure rpc', (t) => {
   const server = createServerAPI(store)
   const client = createClientAPI()
 
@@ -106,53 +104,53 @@ tape('secure rpc', function (t) {
   pull(cs, ss, cs)
 
   cont.para([
-    function (cb) {
-      client.get('foo', function (err) {
+    (cb) => {
+      client.get('foo', (err) => {
         t.ok(err); cb()
       })
     },
-    function (cb) {
-      client.put('foo', function (err) {
+    (cb) => {
+      client.put('foo', (err) => {
         t.ok(err); cb()
       })
     },
-    function (cb) {
-      client.del('foo', function (err) {
+    (cb) => {
+      client.del('foo', (err) => {
         t.ok(err); cb()
       })
     },
-    function (cb) {
-      pull(client.read(), pull.collect(function (err) {
+    (cb) => {
+      pull(client.read(), pull.collect((err) => {
         t.ok(err); cb()
       }))
     }
   ])(function () {
-    client.login({ name: 'user', pass: 'password' }, function (err, res) {
+    client.login({ name: 'user', pass: 'password' }, (err, res) => {
       if (err) throw err
       t.ok(res.okay)
       if (process.env.TEST_VERBOSE) console.log(res)
       t.equal(res.name, 'user')
 
       cont.para([
-        function (cb) {
-          client.get('foo', function (err, value) {
+        (cb) => {
+          client.get('foo', (err, value) => {
             if (err) throw err
             t.equal(value, 1)
             cb()
           })
         },
-        function (cb) {
-          client.put('foo', -1, function (err) {
+        (cb) => {
+          client.put('foo', -1, (err) => {
             t.ok(err); cb()
           })
         },
-        function (cb) {
-          client.del('foo', function (err) {
+        (cb) => {
+          client.del('foo', (err) => {
             t.ok(err); cb()
           })
         },
-        function (cb) {
-          pull(client.read(), pull.collect(function (err, ary) {
+        (cb) => {
+          pull(client.read(), pull.collect((err, ary) => {
             if (err) throw err
             t.deepEqual(ary, [
               { key: 'foo', value: 1 },
@@ -161,14 +159,14 @@ tape('secure rpc', function (t) {
             ]); cb()
           }))
         }
-      ])(function () {
+      ])(() => {
         t.end()
       })
     })
   })
 })
 
-tape('multiple sessions at once', function (t) {
+tape('multiple sessions at once', (t) => {
   const server1 = createServerAPI(store)
   const server2 = createServerAPI(store)
   const admin = createClientAPI()
@@ -183,21 +181,21 @@ tape('multiple sessions at once', function (t) {
   pull(as, s2s, as)
 
   cont.para([
-    function (cb) {
+    (cb) => {
       user.login({ name: 'user', pass: 'password' }, cb)
     },
-    function (cb) {
+    (cb) => {
       admin.login({ name: 'admin', pass: 'admin' }, cb)
     }
   ])(function (err) {
     if (err) throw err
 
-    user.get('foo', function (err, value) {
+    user.get('foo', (err, value) => {
       if (err) throw err
       t.equal(value, 1)
-      admin.put('foo', 2, function (err) {
+      admin.put('foo', 2, (err) => {
         if (err) throw err
-        user.get('foo', function (err, value) {
+        user.get('foo', (err, value) => {
           if (err) throw err
           t.equal(value, 2)
           t.end()
@@ -207,7 +205,7 @@ tape('multiple sessions at once', function (t) {
   })
 })
 
-tape('nested sessions', function (t) {
+tape('nested sessions', (t) => {
   const server = createServerAPI(store)
   const client = createClientAPI()
 
@@ -217,48 +215,49 @@ tape('nested sessions', function (t) {
   pull(cs, ss, cs)
 
   cont.para([
-    function (cb) {
-      client.nested.get('foo', function (err) {
+    (cb) => {
+      client.nested.get('foo', (err) => {
         t.ok(err); cb()
       })
     },
-    function (cb) {
-      client.nested.put('foo', function (err) {
+    (cb) => {
+      client.nested.put('foo', (err) => {
         t.ok(err); cb()
       })
     },
-    function (cb) {
-      client.nested.del('foo', function (err) {
+    (cb) => {
+      client.nested.del('foo', (err) => {
         t.ok(err); cb()
       })
     },
-    function (cb) {
-      pull(client.nested.read(), pull.collect(function (err) {
-        t.ok(err); cb()
+    (cb) => {
+      pull(client.nested.read(), pull.collect((err) => {
+        t.ok(err)
+        cb()
       }))
     }
   ])(function () {
-    client.login({ name: 'nested', pass: 'foofoo' }, function () {
+    client.login({ name: 'nested', pass: 'foofoo' }, () => {
       cont.para([
-        function (cb) {
-          client.nested.get('foo', function (err, value) {
+        (cb) => {
+          client.nested.get('foo', (err, value) => {
             if (err) throw err
             t.equal(value, 2, 'foo should be 2')
             cb()
           })
         },
-        function (cb) {
-          client.nested.put('foo', -1, function (err) {
+        (cb) => {
+          client.nested.put('foo', -1, (err) => {
             t.ok(err); cb()
           })
         },
-        function (cb) {
-          client.nested.del('foo', function (err) {
+        (cb) => {
+          client.nested.del('foo', (err) => {
             t.ok(err); cb()
           })
         },
-        function (cb) {
-          pull(client.nested.read(), pull.collect(function (err, ary) {
+        (cb) => {
+          pull(client.nested.read(), pull.collect((err, ary) => {
             if (err) throw err
             t.deepEqual(ary, [
               { key: 'foo', value: 2 },
@@ -267,7 +266,7 @@ tape('nested sessions', function (t) {
             ]); cb()
           }))
         }
-      ])(function () {
+      ])(() => {
         t.end()
       })
     })

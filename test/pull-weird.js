@@ -1,18 +1,15 @@
 
 const tape = require('tape')
-
+const pull = require('pull-stream')
+const PacketStream = require('packet-stream')
 const Weird = require('../pull-weird')
 
-const PacketStream = require('packet-stream')
-
-const pull = require('pull-stream')
-
-tape('aborts pull-weird correctly', function (t) {
+tape('aborts pull-weird correctly', (t) => {
   t.plan(2)
   const ps = PacketStream({})
 
   pull(
-    function (abort, cb) {
+    (abort, cb) => {
       if (abort) {
         t.ok(true)
       } else {
@@ -20,8 +17,8 @@ tape('aborts pull-weird correctly', function (t) {
       }
     },
     Weird(ps),
-    function (read) {
-      read(true, function (err) {
+    (read) => {
+      read(true, (err) => {
         t.ok(err)
       })
     }

@@ -13,10 +13,10 @@ module.exports = function (serializer) {
     suchstreamwow: 'duplex'
   }
 
-  tape('async handle closed gracefully', function (t) {
+  tape('async handle closed gracefully', (t) => {
     const A = mux(client, null, serializer)()
     const B = mux(null, client, serializer)({
-      hello: function (a, cb) {
+      hello (a, cb) {
         cb(null, 'hello, ' + a)
       }
     })
@@ -30,14 +30,14 @@ module.exports = function (serializer) {
       s
     )
 
-    A.hello('world', function (err, value) {
+    A.hello('world', (err, value) => {
       if (err) throw err
       if (process.env.TEST_VERBOSE) console.log(value)
       t.equal(value, 'hello, world')
 
-      A.close(function (err) {
+      A.close((err) => {
         if (err) throw err
-        A.hello('world', function (err) {
+        A.hello('world', (err) => {
           if (process.env.TEST_VERBOSE) console.log(err)
           t.ok(err)
           t.end()
@@ -46,13 +46,11 @@ module.exports = function (serializer) {
     })
   })
 
-  tape('source handle closed gracefully', function (t) {
+  tape('source handle closed gracefully', (t) => {
     const A = mux(client, null, serializer)()
     const B = mux(null, client, serializer)({
-      stuff: function (b) {
-        return pull.values([1, 2, 3, 4, 5].map(function (a) {
-          return a * b
-        }))
+      stuff (b) {
+        return pull.values([1, 2, 3, 4, 5].map((a) => a * b))
       }
     })
 
@@ -65,14 +63,14 @@ module.exports = function (serializer) {
       s
     )
 
-    pull(A.stuff(5), pull.collect(function (err, ary) {
+    pull(A.stuff(5), pull.collect((err, ary) => {
       if (err) throw err
       if (process.env.TEST_VERBOSE) console.log(ary)
       t.deepEqual(ary, [5, 10, 15, 20, 25])
 
-      A.close(function (err) {
+      A.close((err) => {
         if (err) throw err
-        pull(A.stuff(5), pull.collect(function (err) {
+        pull(A.stuff(5), pull.collect((err) => {
           t.ok(err)
           if (process.env.TEST_VERBOSE) console.log(err)
           t.end()
@@ -81,10 +79,10 @@ module.exports = function (serializer) {
     }))
   })
 
-  tape('sink handle closed gracefully', function (t) {
+  tape('sink handle closed gracefully', (t) => {
     const A = mux(client, null, serializer)()
     const B = mux(null, client, serializer)({
-      things: function () {
+      things () {
         throw new Error('should not be called')
       }
     })
@@ -97,7 +95,7 @@ module.exports = function (serializer) {
       process.env.TEST_VERBOSE ? pull.through(console.log) : null,
       s
     )
-    A.close(function (err) {
+    A.close((err) => {
       if (err) throw err
       pull(pull.values([1, 2, 3, 4, 5]), A.things(5))
 
@@ -106,16 +104,16 @@ module.exports = function (serializer) {
       // the creator of the sink (this block) has no cb after that abort
       // so we'll just make sure 100ms passes without anything exploding
 
-      setTimeout(function () {
+      setTimeout(() => {
         t.end()
       }, 100)
     })
   })
 
-  tape('close twice', function (t) {
+  tape('close twice', (t) => {
     const A = mux(client, null, serializer)()
     const B = mux(null, client, serializer)({
-      hello: function (a, cb) {
+      hello (a, cb) {
         cb(null, 'hello, ' + a)
       }
     })
@@ -129,15 +127,15 @@ module.exports = function (serializer) {
       s
     )
 
-    A.hello('world', function (err, value) {
+    A.hello('world', (err, value) => {
       if (err) throw err
       if (process.env.TEST_VERBOSE) console.log(value)
       t.equal(value, 'hello, world')
 
-      A.close(function (err) {
+      A.close((err) => {
         if (err) throw err
 
-        A.close(function (err) {
+        A.close((err) => {
           if (err) throw err
           t.end()
         })
@@ -145,13 +143,13 @@ module.exports = function (serializer) {
     })
   })
 
-  tape('wait for streams to end before closing', function (t) {
+  tape('wait for streams to end before closing', (t) => {
     const pushable = Pushable()
     let closed = false; let n = 2; const drained = []
 
     const A = mux(client, null, serializer)()
     const B = mux(null, client, serializer)({
-      stuff: function () { return pushable }
+      stuff () { return pushable }
     })
 
     const s = A.createStream()
@@ -159,15 +157,15 @@ module.exports = function (serializer) {
 
     pull(
       A.stuff(),
-      pull.drain(function (data) {
+      pull.drain((data) => {
         drained.push(data)
         t.notOk(closed)
-      }, function () {
+      }, () => {
         next()
       })
     )
 
-    B.close(function () {
+    B.close(() => {
       closed = true
       next()
     })
@@ -179,15 +177,15 @@ module.exports = function (serializer) {
     }
 
     pushable.push(1)
-    setTimeout(function () {
+    setTimeout(() => {
       // this should have already gotten through,
       // but should not have closed yet.
       t.deepEqual(drained, [1])
       pushable.push(2)
-      setTimeout(function () {
+      setTimeout(() => {
         t.deepEqual(drained, [1, 2])
         pushable.push(3)
-        setTimeout(function () {
+        setTimeout(() => {
           t.deepEqual(drained, [1, 2, 3])
           pushable.end()
         })
@@ -195,15 +193,15 @@ module.exports = function (serializer) {
     })
   })
 
-  tape('destroy streams when close(immediate, cb) is used', function (t) {
+  tape('destroy streams when close(immediate, cb) is used', (t) => {
     let closed = false; let n = 3; const drained = []
 
-    const pushable = Pushable(function () {
+    const pushable = Pushable(() => {
       next()
     })
     const A = mux(client, null, serializer)()
     const B = mux(null, client, serializer)({
-      stuff: function () { return pushable }
+      stuff () { return pushable }
     })
 
     const s = A.createStream()
@@ -211,10 +209,10 @@ module.exports = function (serializer) {
 
     pull(
       A.stuff(),
-      pull.drain(function (data) {
+      pull.drain((data) => {
         drained.push(data)
         t.notOk(closed)
-      }, function (err) {
+      }, (err) => {
         t.ok(err)
         next()
       })
@@ -227,11 +225,11 @@ module.exports = function (serializer) {
     }
 
     pushable.push(1)
-    setTimeout(function () {
+    setTimeout(() => {
       // this should have already gotten through,
       // but should not have closed yet.
       t.deepEqual(drained, [1])
-      B.close(true, function () {
+      B.close(true, () => {
         closed = true
         next()
       })
