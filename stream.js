@@ -142,8 +142,8 @@ module.exports = function initStream (localCall, codec, onClose) {
       return
     }
     if (err) {
-      if (cb) cb()
       ps.destroy(err)
+      if (cb) cb()
       return
     }
 
