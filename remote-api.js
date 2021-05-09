@@ -2,26 +2,15 @@
 const u = require('./util')
 const explain = require('explain-error')
 
-function isFunction (f) {
-  return typeof f === 'function'
-}
-
-function isObject (o) {
-  return o && typeof o === 'object'
-}
-
 // add all the api methods to the emitter recursively
 function recurse (obj, manifest, path, remoteCall) {
   for (const name in manifest) {
-    (function (name, type) {
-      const _path = path ? path.concat(name) : [name]
-      obj[name] =
-        isObject(type)
-          ? recurse({}, type, _path, remoteCall)
-          : function () {
-            return remoteCall(type, _path, [].slice.call(arguments))
-          }
-    })(name, manifest[name])
+    const val = manifest[name] // nested-manifest or type string
+    const nestedPath = path ? path.concat(name) : [name]
+    obj[name] =
+      val && typeof val === 'object'
+        ? recurse({}, val, nestedPath, remoteCall)
+        : (...args) => remoteCall(val, nestedPath, args)
   }
   return obj
 }
@@ -32,42 +21,33 @@ function noop (err) {
   }
 }
 
-const promiseTypes = [
-  'sync',
-  'async'
-]
-
-module.exports = function (obj, manifest, _remoteCall, bootstrap) {
+module.exports = function createRemoteApi (obj, manifest, _remoteCall, bootstrap) {
   obj = obj || {}
 
   function remoteCall (type, name, args) {
-    const cb = isFunction(args[args.length - 1])
+    const cb = typeof args[args.length - 1] === 'function'
       ? args.pop()
-      : promiseTypes.includes(type)
+      : type === 'sync' || type === 'async' // promise types
         ? null
         : noop
-    let value
 
     if (typeof cb === 'function') {
+      let value
       // Callback style
       try {
         value = _remoteCall(type, name, args, cb)
       } catch (err) {
         return u.errorAsStreamOrCb(type, err, cb)
       }
-
       return value
     } else {
       // Promise style
-      return new Promise((resolve, reject) =>
+      return new Promise((resolve, reject) => {
         _remoteCall(type, name, args, (err, val) => {
-          if (err) {
-            reject(err)
-          } else {
-            resolve(val)
-          }
+          if (err) reject(err)
+          else resolve(val)
         })
-      )
+      })
     }
   }
 

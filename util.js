@@ -1,10 +1,6 @@
 'use strict'
 const pull = require('pull-stream')
 
-function isString (s) {
-  return typeof s === 'string'
-}
-
 function isEmpty (obj) {
   if (!obj) return true
   return Object.keys(obj).length === 0
@@ -18,7 +14,7 @@ function isEmpty (obj) {
 // which makes sense if it's an object, and set makes sense if it's
 // a string/number/boolean.
 
-exports.set = function (obj, path, value) {
+exports.set = function set (obj, path, value) {
   let _obj, _k
   for (let i = 0; i < path.length; i++) {
     const k = path[i]
@@ -30,8 +26,8 @@ exports.set = function (obj, path, value) {
   _obj[_k] = value
 }
 
-exports.get = function (obj, path) {
-  if (isString(path)) return obj[path]
+exports.get = function get (obj, path) {
+  if (typeof path === 'string') return obj[path]
   let value
   for (let i = 0; i < path.length; i++) {
     const k = path[i]
@@ -41,7 +37,7 @@ exports.get = function (obj, path) {
   return value
 }
 
-exports.prefix = function (obj, path) {
+exports.prefix = function prefix (obj, path) {
   let value
 
   for (let i = 0; i < path.length; i++) {
@@ -60,7 +56,6 @@ function mkPath (obj, path) {
     if (!obj[key]) obj[key] = {}
     obj = obj[key]
   }
-
   return obj
 }
 
@@ -82,39 +77,31 @@ function merge (obj, _obj) {
   return obj
 }
 
-exports.mount = function (obj, path, _obj) {
+exports.mount = function mount (obj, path, _obj) {
   if (!Array.isArray(path)) {
     throw new Error('path must be array of strings')
   }
   return merge(mkPath(obj, path), _obj)
 }
 
-exports.unmount = function (obj, path) {
+exports.unmount = function unmount (obj, path) {
   return rmPath(obj, path)
 }
 
-function isSource (t) {
-  return t === 'source'
-}
-function isSink (t) {
-  return t === 'sink'
-}
-function isDuplex (t) {
-  return t === 'duplex'
-}
-function isSync (t) {
-  return t === 'sync'
-}
-function isAsync (t) {
-  return t === 'async'
-}
-function isRequest (t) {
-  return isSync(t) || isAsync(t)
-}
+const isSource = (t) => t === 'source'
+const isSink = (t) => t === 'sink'
+const isDuplex = (t) => t === 'duplex'
+const isSync = (t) => t === 'sync'
+const isAsync = (t) => t === 'async'
+const isRequest = (t) => isSync(t) || isAsync(t)
+const isStream = (t) => isSource(t) || isSink(t) || isDuplex(t)
+
+exports.isRequest = isRequest
+exports.isStream = isStream
 
 function abortSink (err) {
   return function (read) {
-    read(err || true, function () {})
+    read(err || true, () => {})
   }
 }
 
@@ -122,7 +109,7 @@ function abortDuplex (err) {
   return { source: pull.error(err), sink: abortSink(err) }
 }
 
-exports.errorAsStream = function (type, err) {
+exports.errorAsStream = function errorAsStream (type, err) {
   return isSource(type)
     ? pull.error(err)
     : isSink(type)
@@ -130,7 +117,7 @@ exports.errorAsStream = function (type, err) {
       : abortDuplex(err)
 }
 
-exports.errorAsStreamOrCb = function (type, err, cb) {
+exports.errorAsStreamOrCb = function errorAsStreamOrCb (type, err, cb) {
   return (
     isRequest(type)
       ? cb(err)
@@ -143,7 +130,7 @@ exports.errorAsStreamOrCb = function (type, err, cb) {
   )
 }
 
-exports.pipeToStream = function (type, _stream, stream) {
+exports.pipeToStream = function pipeToStream (type, _stream, stream) {
   if (isSource(type)) {
     _stream(stream)
   } else if (isSink(type)) {

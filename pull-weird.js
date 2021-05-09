@@ -4,29 +4,26 @@ const pull = require('pull-stream')
 
 function once (fn) {
   let done = false
-  return function (err, val) {
+  return (err, val) => {
     if (done) return
     done = true
     fn(err, val)
   }
 }
 
-module.exports = function (weird, _done) {
+function duplex (weird, _done) {
   const buffer = []
   let ended = false
   let waiting
   let abort
 
-  const done = once(function (err, v) {
-    _done && _done(err, v)
+  const done = once((err, v) => {
+    if (_done) _done(err, v)
     // deallocate
     weird = null
     _done = null
     waiting = null
-
-    if (abort) {
-      abort(err || true, function () {})
-    }
+    if (abort) abort(err || true, () => {})
   })
 
   weird.read = function (data, end) {
@@ -46,10 +43,11 @@ module.exports = function (weird, _done) {
   }
 
   return {
-    source: function (abort, cb) {
+    source (abort, cb) {
       if (abort) {
-        weird && weird.write(null, abort)
-        cb(abort); done(abort !== true ? abort : null)
+        if (weird) weird.write(null, abort)
+        cb(abort)
+        done(abort !== true ? abort : null)
       } else if (buffer.length) {
         cb(null, buffer.shift())
       } else if (ended) {
@@ -58,17 +56,17 @@ module.exports = function (weird, _done) {
         waiting = cb
       }
     },
-    sink: function (read) {
+    sink (read) {
       if (ended) {
         abort = null
-        return read(ended, function () {})
+        return read(ended, () => {})
       }
       abort = read
-      pull.drain(function (data) {
+      pull.drain((data) => {
         // TODO: make this should only happen on a UNIPLEX stream.
         if (ended) return false
         weird.write(data)
-      }, function (err) {
+      }, (err) => {
         if (weird && !weird.writeEnd) {
           weird.write(null, err || true)
         }
@@ -79,17 +77,21 @@ module.exports = function (weird, _done) {
 }
 
 function uniplex (s, done) {
-  return module.exports(s, function (err) {
+  return duplex(s, (err) => {
     if (!s.writeEnd) s.write(null, err || true)
     if (done) done(err)
   })
 }
 
-module.exports.source = function (s) {
+function source (s) {
   return uniplex(s).source
 }
-module.exports.sink = function (s, done) {
+
+function sink (s, done) {
   return uniplex(s, done).sink
 }
 
-module.exports.duplex = module.exports
+module.exports = duplex
+module.exports.source = source
+module.exports.sink = sink
+module.exports.duplex = duplex
