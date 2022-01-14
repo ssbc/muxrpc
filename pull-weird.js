@@ -14,6 +14,7 @@ function once (fn) {
 function duplex (weird, _done) {
   const buffer = []
   let ended = false
+  let aborted = false
   let waiting
   let abort
 
@@ -33,7 +34,7 @@ function duplex (weird, _done) {
       const cb = waiting
       waiting = null
       cb(ended, data)
-    } else if (!ended) {
+    } else if (!ended && !aborted) {
       buffer.push(data)
     }
 
@@ -47,6 +48,8 @@ function duplex (weird, _done) {
       if (abort) {
         if (weird) weird.write(null, abort)
         cb(abort)
+        buffer.length = 0
+        aborted = true
         done(abort !== true ? abort : null)
       } else if (buffer.length) {
         cb(null, buffer.shift())
