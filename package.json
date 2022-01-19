@@ -7,6 +7,9 @@
     "type": "git",
     "url": "git://github.com/ssbc/muxrpc.git"
   },
+  "files": [
+    "*.js"
+  ],
   "dependencies": {
     "c8": "^7.11.0",
     "explain-error": "^1.0.1",
