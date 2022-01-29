@@ -4,6 +4,7 @@ const pullWeird = require('./pull-weird')
 const goodbye = require('pull-goodbye')
 const u = require('./util')
 const explain = require('explain-error')
+const debug = require('debug')('muxrpc:psc')
 
 module.exports = function initStream (localCall, codec, onClose) {
   let ps = PacketStream({
@@ -95,7 +96,7 @@ module.exports = function initStream (localCall, codec, onClose) {
     // this error will be handled in PacketStream.close
   }))
 
-  ws = codec ? codec(ws) : ws
+  ws = codec ? codec(ws, debug.enabled ? debug.namespace : false) : ws
 
   ws.remoteCall = function (type, name, args, cb) {
     if (name === 'emit') return ps.message(args)
