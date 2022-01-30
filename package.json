@@ -8,7 +8,7 @@
     "url": "git://github.com/ssbc/muxrpc.git"
   },
   "files": [
-    "*.js/"
+    "*.js"
   ],
   "dependencies": {
     "debug": "^4.3.3",
