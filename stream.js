@@ -3,7 +3,7 @@ const PacketStream = require('packet-stream')
 const pullWeird = require('./pull-weird')
 const goodbye = require('pull-goodbye')
 const u = require('./util')
-const explain = require('explain-error')
+const clarify = require('clarify-error')
 const debug = require('debug')('muxrpc:psc')
 
 module.exports = function initStream (localCall, codec, onClose) {
@@ -31,7 +31,7 @@ module.exports = function initStream (localCall, codec, onClose) {
         localCall('async', name, args)
       } catch (err) {
         if (inCB || called) {
-          throw explain(err, 'no callback provided to muxrpc async funtion')
+          throw clarify(err, 'no callback provided to muxrpc async funtion')
         }
         cb(err)
       }
@@ -142,7 +142,7 @@ module.exports = function initStream (localCall, codec, onClose) {
 
     ps.close((err) => {
       if (cb) cb(err)
-      else if (err) throw explain(err, 'no callback provided for muxrpc close')
+      else if (err) throw clarify(err, 'no callback provided for muxrpc close')
     })
 
     return this
