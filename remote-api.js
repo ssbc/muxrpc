@@ -1,5 +1,5 @@
 'use strict'
-const explain = require('explain-error')
+const clarify = require('clarify-error')
 const u = require('./util')
 
 /**
@@ -22,7 +22,7 @@ function recurse (obj, manifest, path, remoteCall) {
 }
 
 function noop (err) {
-  if (err) throw explain(err, 'callback not provided')
+  if (err) throw clarify(err, 'callback not provided')
 }
 
 function createRemoteApi (obj, manifest, actualRemoteCall, bootstrapCB) {
