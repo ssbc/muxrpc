@@ -27,3 +27,30 @@ tape('prefix 0', (t) => {
 
   t.end()
 })
+
+tape('errorAsStreamOrCb async', t => {
+  t.plan(1)
+  u.errorAsStreamOrCb('async', new Error('foo'), (err) => {
+    t.equal(err.message, 'foo')
+  })
+})
+
+tape('errorAsStreamOrCb source', t => {
+  t.plan(1)
+  const source = u.errorAsStreamOrCb('source', new Error('foo'), null)
+  t.equals(typeof source, 'function')
+})
+
+tape('errorAsStreamOrCb sink', t => {
+  t.plan(1)
+  const sink = u.errorAsStreamOrCb('sink', new Error('foo'), null)
+  t.equals(typeof sink, 'function')
+})
+
+tape('errorAsStreamOrCb duplex', t => {
+  t.plan(3)
+  const duplex = u.errorAsStreamOrCb('duplex', new Error('foo'), null)
+  t.equals(typeof duplex, 'object')
+  t.equals(typeof duplex.source, 'function')
+  t.equals(typeof duplex.sink, 'function')
+})
