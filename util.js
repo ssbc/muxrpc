@@ -118,16 +118,15 @@ exports.errorAsStream = function errorAsStream (type, err) {
 }
 
 exports.errorAsStreamOrCb = function errorAsStreamOrCb (type, err, cb) {
-  return (
-    isRequest(type)
-      ? cb(err)
+  return isRequest(type)
+    ? cb(err)
+    : isDuplex(type)
+      ? abortDuplex(err)
       : isSource(type)
         ? pull.error(err)
         : isSink(type)
           ? abortSink(err)
-          : cb(err),
-    abortDuplex(err)
-  )
+          : cb(err)
 }
 
 exports.pipeToStream = function pipeToStream (type, _stream, stream) {
