@@ -11,9 +11,9 @@ function createClient (t) {
     echo: 'duplex'
   }
 
-  const A = mux(client, null)()
+  const A = mux(client, null)
 
-  const B = mux(null, {})({
+  const B = mux(null, {}, {
     get (a, cb) {
       // root access!! this should never happen!
       t.ok(false, 'attacker got in')
@@ -33,13 +33,12 @@ function createClient (t) {
     }
   })
 
-  const s = A.createStream()
   pull(
-    s,
+    A.stream,
     process.env.TEST_VERBOSE ? pull.through(console.log) : null,
-    B.createStream(),
+    B.stream,
     process.env.TEST_VERBOSE ? pull.through(console.log) : null,
-    s
+    A.stream
   )
 
   return A
@@ -103,11 +102,10 @@ tape('client and server manifest have different types', (t) => {
   const clientM = { foo: 'async' }
   const serverM = { foo: 'source' }
 
-  const A = mux(clientM, null)()
-  const B = mux(null, serverM)()
+  const A = mux(clientM, null)
+  const B = mux(null, serverM)
 
-  const as = A.createStream()
-  pull(as, B.createStream(), as)
+  pull(A.stream, B.stream, A.stream)
 
   A.foo((err) => {
     if (process.env.TEST_VERBOSE) console.log(err)

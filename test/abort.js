@@ -13,8 +13,8 @@ module.exports = function (serializer) {
       drainAbort: 'sink'
     }
 
-    const A = mux(client, null, serializer)()
-    const B = mux(null, client, serializer)({
+    const A = mux(client, null, null, null, serializer)
+    const B = mux(null, client, {
       drainAbort: (n) => {
         return pull(
           pull.through(() => {
@@ -28,12 +28,9 @@ module.exports = function (serializer) {
           })
         )
       }
-    })
+    }, null, serializer)
 
-    const as = A.createStream()
-    const bs = B.createStream()
-
-    pull(as, abortable, bs, as)
+    pull(A.stream, abortable, B.stream, A.stream)
 
     const sent = []
 
@@ -41,7 +38,7 @@ module.exports = function (serializer) {
       pull.values([1, 2, 3, 4, 5, 6, 7, 8, 9, 10], (abort) => {
         if (process.env.TEST_VERBOSE) console.log(abort)
         t.ok(sent.length < 10, 'sent is correct')
-        t.end()
+        // t.end()
       }),
       pull.asyncMap((data, cb) => {
         setImmediate(() => {

@@ -5,7 +5,7 @@ const initStream = require('./stream')
 const createRemoteApi = require('./remote-api')
 const createLocalApi = require('./local-api')
 
-function createMuxrpc (remoteManifest, localManifest, localApi, id, perms, codec, legacy) {
+function createMuxrpc (remoteManifest, localManifest, localApi, perms, codec) {
   let bootstrapCB
   if (typeof remoteManifest === 'function') {
     bootstrapCB = remoteManifest
@@ -17,29 +17,13 @@ function createMuxrpc (remoteManifest, localManifest, localApi, id, perms, codec
   const emitter = new EventEmitter()
   if (!codec) codec = PacketStreamCodec
 
-  // pass the manifest to the permissions so that it can know
-  // what something should be.
-  let _cb
-  const context = {
-    _emit (event, value) {
-      if (emitter) emitter._emit(event, value)
-      return context
-    },
-    id
-  }
-
   const ws = initStream(
-    createLocalApi(localApi, localManifest, perms).bind(context),
+    createLocalApi(localApi, localManifest, perms).bind(emitter),
     codec,
-    (err) => {
+    () => {
       if (emitter.closed) return
       emitter.closed = true
       emitter.emit('closed')
-      if (_cb) {
-        const cb = _cb
-        _cb = null
-        cb(err)
-      }
     }
   )
 
@@ -53,26 +37,7 @@ function createMuxrpc (remoteManifest, localManifest, localApi, id, perms, codec
     bootstrapCB
   )
 
-  // legacy local emit, from when remote emit was supported.
-  emitter._emit = emitter.emit
-
-  if (legacy) {
-    Object.__defineGetter__.call(emitter, 'id', () => context.id)
-    Object.__defineSetter__.call(emitter, 'id', (value) => { context.id = value })
-
-    let first = true
-    emitter.createStream = (cb) => {
-      _cb = cb
-      if (first) {
-        first = false
-        return ws
-      } else {
-        throw new Error('one stream per rpc')
-      }
-    }
-  } else {
-    emitter.stream = ws
-  }
+  emitter.stream = ws
 
   emitter.closed = false
 
@@ -84,11 +49,4 @@ function createMuxrpc (remoteManifest, localManifest, localApi, id, perms, codec
   return emitter
 }
 
-module.exports = function (remoteManifest, localManifest, codec) {
-  if (arguments.length > 3) {
-    return createMuxrpc.apply(this, arguments)
-  }
-  return function (local, perms, id) {
-    return createMuxrpc(remoteManifest, localManifest, local, id, perms, codec, true)
-  }
-}
+module.exports = createMuxrpc
