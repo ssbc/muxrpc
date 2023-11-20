@@ -26,23 +26,22 @@ module.exports = function (serializer, buffers) {
   }
 
   tape('async', (t) => {
-    const A = mux(client, null, serializer)()
-    const B = mux(null, client, serializer)({
+    const A = mux(client, null, null, null, serializer)
+    const B = mux(null, client, {
       hello (a, cb) {
         cb(null, 'hello, ' + a)
       },
       goodbye (b, cb) {
         cb(null, b)
       }
-    })
+    }, null, serializer)
 
-    const s = A.createStream()
     pull(
-      s,
+      A.stream,
       process.env.TEST_VERBOSE ? pull.through(console.log) : null,
-      B.createStream(),
+      B.stream,
       process.env.TEST_VERBOSE ? pull.through(console.log) : null,
-      s
+      A.stream
     )
 
     A.hello('world', (err, value) => {
@@ -61,23 +60,22 @@ module.exports = function (serializer, buffers) {
   })
 
   tape('async promise', (t) => {
-    const A = mux(client, null, serializer)()
-    const B = mux(null, client, serializer)({
+    const A = mux(client, null, null, null, serializer)
+    const B = mux(null, client, {
       hello (a, cb) {
         cb(null, 'hello, ' + a)
       },
       goodbye (b, cb) {
         cb(null, b)
       }
-    })
+    }, null, serializer)
 
-    const s = A.createStream()
     pull(
-      s,
+      A.stream,
       process.env.TEST_VERBOSE ? pull.through(console.log) : null,
-      B.createStream(),
+      B.stream,
       process.env.TEST_VERBOSE ? pull.through(console.log) : null,
-      s
+      A.stream
     )
 
     A.hello('world').then((value) => {
@@ -100,23 +98,22 @@ module.exports = function (serializer, buffers) {
       Buffer.from([4, 5])
     ]
 
-    const A = mux(client, null, serializer)()
-    const B = mux(null, client, serializer)({
+    const A = mux(client, null, null, null, serializer)
+    const B = mux(null, client, {
       stuff (b) {
         return pull.values([1, 2, 3, 4, 5].map((a) => a * b))
       },
       bstuff () {
         return pull.values(expected)
       }
-    })
+    }, null, serializer)
 
-    const s = A.createStream()
     pull(
-      s,
+      A.stream,
       process.env.TEST_VERBOSE ? pull.through(console.log) : null,
-      B.createStream(),
+      B.stream,
       process.env.TEST_VERBOSE ? pull.through(console.log) : null,
-      s
+      A.stream
     )
 
     pull(A.stuff(5), pull.collect((err, ary) => {
@@ -139,18 +136,17 @@ module.exports = function (serializer, buffers) {
       syncErr: 'sync'
     }
 
-    const A = mux(client, null, serializer)()
-    const B = mux(null, client, serializer)({
+    const A = mux(client, null, null, null, serializer)
+    const B = mux(null, client, {
       syncOk (a) {
         return { okay: a }
       },
       syncErr (b) {
         throw new Error('test error:' + b)
       }
-    })
+    }, null, serializer)
 
-    const s = A.createStream()
-    pull(s, B.createStream(), s)
+    pull(A.stream, B.stream, A.stream)
 
     A.syncOk(true, (err, value) => {
       t.error(err)
@@ -163,8 +159,8 @@ module.exports = function (serializer, buffers) {
   })
 
   tape('sink', (t) => {
-    const A = mux(client, null, serializer)()
-    const B = mux(null, client, serializer)({
+    const A = mux(client, null, null, null, serializer)
+    const B = mux(null, client, {
       things (someParam) {
         return pull.collect((err, values) => {
           if (err) throw err
@@ -173,22 +169,21 @@ module.exports = function (serializer, buffers) {
           t.end()
         })
       }
-    })
+    }, null, serializer)
 
-    const s = A.createStream()
     pull(
-      s,
+      A.stream,
       process.env.TEST_VERBOSE ? pull.through(console.log) : null,
-      B.createStream(),
+      B.stream,
       process.env.TEST_VERBOSE ? pull.through(console.log) : null,
-      s
+      A.stream
     )
     pull(pull.values([1, 2, 3, 4, 5]), A.things(5))
   })
 
   tape('duplex', (t) => {
-    const A = mux(client, null, serializer)()
-    const B = mux(null, client, serializer)({
+    const A = mux(client, null, null, null, serializer)
+    const B = mux(null, client, {
       suchstreamwow (someParam) {
         // did the param come through?
         t.equal(someParam, 5)
@@ -211,24 +206,23 @@ module.exports = function (serializer, buffers) {
           })
         }
       }
-    })
+    }, null, serializer)
 
-    const s = A.createStream()
     pull(
-      s,
+      A.stream,
       process.env.TEST_VERBOSE ? pull.through(console.log.bind(console, 'IN')) : null,
-      B.createStream(),
+      B.stream,
       process.env.TEST_VERBOSE ? pull.through(console.log.bind(console, 'OUT')) : null,
-      s
+      A.stream
     )
     const dup = A.suchstreamwow(5)
     pull(dup, dup)
   })
 
   tape('async - error1', (t) => {
-    const A = mux(client, null)()
+    const A = mux(client, null)
 
-    const s = A.createStream()
+    const s = A.stream
 
     A.hello('world', (err) => {
       t.ok(err)
@@ -242,9 +236,9 @@ module.exports = function (serializer, buffers) {
   })
 
   tape('async - error2', (t) => {
-    const A = mux(client, null)()
+    const A = mux(client, null)
 
-    const s = A.createStream()
+    const s = A.stream
 
     A.hello('world', (err) => {
       if (process.env.TEST_VERBOSE) console.log('CB!')
@@ -256,8 +250,8 @@ module.exports = function (serializer, buffers) {
   })
 
   tape('buffer calls before stream is created', (t) => {
-    const A = mux(client, null)()
-    const B = mux(null, client)({
+    const A = mux(client, null)
+    const B = mux(null, client, {
       hello (a, cb) {
         cb(null, 'hello, ' + a)
       }
@@ -270,14 +264,13 @@ module.exports = function (serializer, buffers) {
       t.end()
     })
 
-    const s = A.createStream()
-    pull(s, B.createStream(), s)
+    pull(A.stream, B.stream, A.stream)
   })
 
   //  tape('async - error, and reconnect', (t) => {
-  //    var A = mux(client, null) ()
+  //    var A = mux(client, null)
   //
-  //    var s = A.createStream()
+  //    var s = A.stream
   //
   //    A.hello('world', (err, value) => {
   //      t.ok(err)
@@ -288,9 +281,9 @@ module.exports = function (serializer, buffers) {
   //        },
   //      })
   //
-  //      var s = A.createStream()
+  //      var s = A.stream
   //
-  //      pull(s, B.createStream(), s)
+  //      pull(s, B.stream, s)
   //
   //      A.hello('world', (err, value) => {
   //        t.notOk(err)
@@ -302,53 +295,6 @@ module.exports = function (serializer, buffers) {
   //    s.sink((abort, cb) => { cb(true) })
   //  })
 
-  tape('recover error written to outer stream', (t) => {
-    const A = mux(client, null)()
-    const err = new Error('testing errors')
-    const s = A.createStream((_err) => {
-      t.equal(_err, err)
-      t.end()
-    })
-
-    pull(pull.error(err), s.sink)
-  })
-
-  tape('recover error when outer stream aborted', (t) => {
-    const A = mux(client, null)()
-    const err = new Error('testing errors')
-    const s = A.createStream((_err) => {
-      t.equal(_err, err)
-      t.end()
-    })
-
-    s.source(err, () => {})
-  })
-
-  tape('cb when stream is ended', (t) => {
-    const A = mux(client, null)()
-    const s = A.createStream((err) => {
-      //      if(err) throw err
-      t.ok(err)
-      //      t.equal(err, null)
-      t.end()
-    })
-
-    pull(pull.empty(), s.sink)
-  })
-
-  tape('cb when stream is aborted', (t) => {
-    const err = new Error('testing error')
-    const A = mux(client, null)()
-    const s = A.createStream((_err) => {
-      //    if(_err) throw err
-      t.equal(_err, err)
-      //      t.ok(err)
-      t.end()
-    })
-
-    s.source(err, () => {})
-  })
-
   const client2 = {
     salutations: {
       hello: 'async',
@@ -357,8 +303,8 @@ module.exports = function (serializer, buffers) {
   }
 
   tape('nested methods', (t) => {
-    const A = mux(client2, null, serializer)()
-    const B = mux(null, client2, serializer)({
+    const A = mux(client2, null, null, null, serializer)
+    const B = mux(null, client2, {
       salutations: {
         hello (a, cb) {
           cb(null, 'hello, ' + a)
@@ -367,15 +313,14 @@ module.exports = function (serializer, buffers) {
           cb(null, b)
         }
       }
-    })
+    }, null, serializer)
 
-    const s = A.createStream()
     pull(
-      s,
+      A.stream,
       process.env.TEST_VERBOSE ? pull.through(console.log.bind(console, 'IN')) : null,
-      B.createStream(),
+      B.stream,
       process.env.TEST_VERBOSE ? pull.through(console.log.bind(console, 'OUT')) : null,
-      s
+      A.stream
     )
 
     A.salutations.hello('world', (err, value) => {
@@ -393,17 +338,17 @@ module.exports = function (serializer, buffers) {
   })
 
   tape('sink', (t) => {
-    const A = mux(client, null, serializer)()
-    const B = mux(null, client, serializer)({
+    const A = mux(client, null, serializer)
+    const B = mux(null, client, {
       things (len) {
         return pull.collect((err, ary) => {
           t.error(err)
           t.equal(ary.length, len)
         })
       }
-    })
+    }, null, serializer)
 
-    const s = A.createStream(); pull(s, B.createStream(), s)
+    pull(A.stream, B.stream, A.stream)
 
     pull(pull.values([1, 2, 3]), A.things(3, (err) => {
       if (err) throw err
@@ -414,16 +359,16 @@ module.exports = function (serializer, buffers) {
   tape('sink - abort', (t) => {
     const err = new Error('test abort error')
 
-    const A = mux(client, null, serializer)()
-    const B = mux(null, client, serializer)({
+    const A = mux(client, null, null, null, serializer)
+    const B = mux(null, client, {
       things () {
         return (read) => {
           read(err, () => {})
         }
       }
-    })
+    }, null, serializer)
 
-    const s = A.createStream(); pull(s, B.createStream(), s)
+    pull(A.stream, B.stream, A.stream)
 
     pull(pull.values([1, 2, 3]), A.things(3, (_err) => {
       t.ok(_err)

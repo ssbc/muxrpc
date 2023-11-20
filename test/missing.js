@@ -10,12 +10,11 @@ const id = (e) => e
 
 module.exports = function (codec) {
   tape('close after both sides of a duplex stream ends', (t) => {
-    const A = mux(client, null, codec)()
-    const B = mux(null, client, codec)({
-    })
+    const A = mux(client, null, null, null, codec)
+    const B = mux(null, client, {}, null, codec)
 
-    const bs = B.createStream()
-    const as = A.createStream()
+    const bs = B.stream
+    const as = A.stream
 
     pull(
       (err, cb) => {

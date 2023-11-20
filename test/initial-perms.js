@@ -3,7 +3,7 @@ const pull = require('pull-stream')
 const cont = require('cont')
 const mux = require('../')
 
-const api = {
+const manifest = {
   get: 'async',
   put: 'async',
   del: 'async',
@@ -16,8 +16,6 @@ const api = {
   }
 }
 
-const id = (e) => e
-
 const store = {
   foo: 1,
   bar: 2,
@@ -27,9 +25,7 @@ const store = {
 function createServerAPI (store) {
   const name = 'nobody'
 
-  // this wraps a session.
-
-  const session = {
+  const local = {
     whoami (cb) {
       cb(null, { okay: true, user: name })
     },
@@ -49,21 +45,21 @@ function createServerAPI (store) {
     }
   }
 
-  session.nested = session
+  local.nested = local
 
-  return mux(null, api, id)(session, { allow: ['get'] })
+  return mux(null, manifest, local, { allow: ['get'] })
 }
 
 function createClientAPI () {
-  return mux(api, null, id)()
+  return mux(manifest)
 }
 
 tape('secure rpc', (t) => {
   const server = createServerAPI(store)
   const client = createClientAPI()
 
-  const ss = server.createStream()
-  const cs = client.createStream()
+  const ss = server.stream
+  const cs = client.stream
 
   pull(cs, ss, cs)
 

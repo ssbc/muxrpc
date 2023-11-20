@@ -4,7 +4,7 @@ const cont = require('cont')
 const mux = require('../')
 const Permissions = require('../permissions')
 
-const api = {
+const manifest = {
   login: 'async',
   logout: 'async',
   get: 'async',
@@ -19,8 +19,6 @@ const api = {
   }
 }
 
-const id = (e) => e
-
 const store = {
   foo: 1,
   bar: 2,
@@ -34,7 +32,7 @@ function createServerAPI (store) {
 
   const perms = Permissions({ allow: ['login'] })
 
-  const session = {
+  const local = {
     // implement your own auth function.
     // it should just set the allow and deny lists.
 
@@ -85,23 +83,20 @@ function createServerAPI (store) {
     }
   }
 
-  session.nested = session
+  local.nested = local
 
-  return mux(null, api, id)(session, perms)
+  return mux(null, manifest, local, perms)
 }
 
 function createClientAPI () {
-  return mux(api, null, id)()
+  return mux(manifest, null)
 }
 
 tape('secure rpc', (t) => {
   const server = createServerAPI(store)
   const client = createClientAPI()
 
-  const ss = server.createStream()
-  const cs = client.createStream()
-
-  pull(cs, ss, cs)
+  pull(client.stream, server.stream, client.stream)
 
   cont.para([
     (cb) => {
@@ -172,10 +167,10 @@ tape('multiple sessions at once', (t) => {
   const admin = createClientAPI()
   const user = createClientAPI()
 
-  const s1s = server1.createStream()
-  const s2s = server2.createStream()
-  const us = user.createStream()
-  const as = admin.createStream()
+  const s1s = server1.stream
+  const s2s = server2.stream
+  const us = user.stream
+  const as = admin.stream
 
   pull(us, s1s, us)
   pull(as, s2s, as)
@@ -209,8 +204,8 @@ tape('nested sessions', (t) => {
   const server = createServerAPI(store)
   const client = createClientAPI()
 
-  const ss = server.createStream()
-  const cs = client.createStream()
+  const ss = server.stream
+  const cs = client.stream
 
   pull(cs, ss, cs)
 

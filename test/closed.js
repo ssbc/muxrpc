@@ -14,20 +14,19 @@ module.exports = function (serializer) {
   }
 
   tape('async handle closed gracefully', (t) => {
-    const A = mux(client, null, serializer)()
-    const B = mux(null, client, serializer)({
+    const A = mux(client, null, null, null, serializer)
+    const B = mux(null, client, {
       hello (a, cb) {
         cb(null, 'hello, ' + a)
       }
-    })
+    }, null, serializer)
 
-    const s = A.createStream()
     pull(
-      s,
+      A.stream,
       process.env.TEST_VERBOSE ? pull.through(console.log) : null,
-      B.createStream(),
+      B.stream,
       process.env.TEST_VERBOSE ? pull.through(console.log) : null,
-      s
+      A.stream
     )
 
     A.hello('world', (err, value) => {
@@ -47,20 +46,19 @@ module.exports = function (serializer) {
   })
 
   tape('source handle closed gracefully', (t) => {
-    const A = mux(client, null, serializer)()
-    const B = mux(null, client, serializer)({
+    const A = mux(client, null, null, null, serializer)
+    const B = mux(null, client, {
       stuff (b) {
         return pull.values([1, 2, 3, 4, 5].map((a) => a * b))
       }
-    })
+    }, null, serializer)
 
-    const s = A.createStream()
     pull(
-      s,
+      A.stream,
       process.env.TEST_VERBOSE ? pull.through(console.log) : null,
-      B.createStream(),
+      B.stream,
       process.env.TEST_VERBOSE ? pull.through(console.log) : null,
-      s
+      A.stream
     )
 
     pull(A.stuff(5), pull.collect((err, ary) => {
@@ -80,20 +78,19 @@ module.exports = function (serializer) {
   })
 
   tape('sink handle closed gracefully', (t) => {
-    const A = mux(client, null, serializer)()
-    const B = mux(null, client, serializer)({
+    const A = mux(client, null, null, null, serializer)
+    const B = mux(null, client, {
       things () {
         throw new Error('should not be called')
       }
-    })
+    }, null, serializer)
 
-    const s = A.createStream()
     pull(
-      s,
+      A.stream,
       process.env.TEST_VERBOSE ? pull.through(console.log) : null,
-      B.createStream(),
+      B.stream,
       process.env.TEST_VERBOSE ? pull.through(console.log) : null,
-      s
+      A.stream
     )
     A.close((err) => {
       if (err) throw err
@@ -111,20 +108,19 @@ module.exports = function (serializer) {
   })
 
   tape('close twice', (t) => {
-    const A = mux(client, null, serializer)()
-    const B = mux(null, client, serializer)({
+    const A = mux(client, null, null, null, serializer)
+    const B = mux(null, client, {
       hello (a, cb) {
         cb(null, 'hello, ' + a)
       }
-    })
+    }, null, serializer)
 
-    const s = A.createStream()
     pull(
-      s,
+      A.stream,
       process.env.TEST_VERBOSE ? pull.through(console.log) : null,
-      B.createStream(),
+      B.stream,
       process.env.TEST_VERBOSE ? pull.through(console.log) : null,
-      s
+      A.stream
     )
 
     A.hello('world', (err, value) => {
@@ -147,13 +143,12 @@ module.exports = function (serializer) {
     const pushable = Pushable()
     let closed = false; let n = 2; const drained = []
 
-    const A = mux(client, null, serializer)()
-    const B = mux(null, client, serializer)({
+    const A = mux(client, null, null, null, serializer)
+    const B = mux(null, client, {
       stuff () { return pushable }
-    })
+    }, null, serializer)
 
-    const s = A.createStream()
-    pull(s, B.createStream(), s)
+    pull(A.stream, B.stream, A.stream)
 
     pull(
       A.stuff(),
@@ -199,13 +194,12 @@ module.exports = function (serializer) {
     const pushable = Pushable(() => {
       next()
     })
-    const A = mux(client, null, serializer)()
-    const B = mux(null, client, serializer)({
+    const A = mux(client, null, null, null, serializer)
+    const B = mux(null, client, {
       stuff () { return pushable }
-    })
+    }, null, serializer)
 
-    const s = A.createStream()
-    pull(s, B.createStream(), s)
+    pull(A.stream, B.stream, A.stream)
 
     pull(
       A.stuff(),
